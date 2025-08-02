@@ -1,7 +1,6 @@
 #import modules
 import numpy as np
-from numpy.random import randint
-from numpy.fft import fft2, ifft2, fftshift
+from numpy.fft import fft2, fftshift
 from matplotlib import pyplot as plt
 
 from utils import matrix as mt

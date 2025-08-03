@@ -24,6 +24,7 @@ def show_scan_and_diffs(ptycho, num_patterns=4, log_scale=True, cmap_obj="gray",
     スキャン照明分布と回折像の可視化。
     """
     from numpy.fft import fftshift
+    import matplotlib.pyplot as plt
 
     scan_img, alpha = compute_illumination(ptycho)
     fig, axes = plt.subplots(1, num_patterns + 1, figsize=(3 * (num_patterns + 1), 3))
@@ -33,7 +34,7 @@ def show_scan_and_diffs(ptycho, num_patterns=4, log_scale=True, cmap_obj="gray",
     axes[0].axis("off")
     axes[0].set_title(f"Scanned positions\n(alpha={alpha:.2f})", fontsize=12)
 
-    # 回折像 (先頭からnum_patterns枚)
+    # 回折像
     for i in range(num_patterns):
         ax = axes[i + 1]
         ax.axis("off")
@@ -47,3 +48,6 @@ def show_scan_and_diffs(ptycho, num_patterns=4, log_scale=True, cmap_obj="gray",
 
     plt.tight_layout()
     plt.show()
+
+    return fig  
+

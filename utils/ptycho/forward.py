@@ -31,6 +31,9 @@ def generate_diffraction(ptycho: Ptycho, positions: List[Tuple[int, int]]) -> Li
         ]
         # 回折像（振幅）
         diff = np().abs(fft2(obj_patch * ptycho.prb, norm = "ortho"))
-        diffs.append(DiffractionData(position=pos, diffraction=diff))
-
+        #indices
+        yy = np().arange(y - prb_len // 2, y + prb_len // 2)
+        xx = np().arange(x - prb_len // 2, x + prb_len // 2)
+        Y, X = np().meshgrid(yy, xx, indexing='ij')
+        diffs.append(DiffractionData(position=pos, diffraction=diff, indices=(Y, X)))
     return diffs

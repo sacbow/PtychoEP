@@ -15,6 +15,7 @@ class DiffractionData:
     position: Tuple[int, int]
     diffraction: np().ndarray
     meta: dict = field(default_factory=dict)
+    indices: Tuple[np().ndarray, np().ndarray] = None
 
     def intensity(self) -> np().ndarray:
         """回折像の強度（振幅^2）を返す。"""

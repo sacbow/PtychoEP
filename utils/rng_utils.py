@@ -13,11 +13,16 @@ def normal(rng, mean=0.0, var=1.0, size=None, dtype=np().complex64):
     """正規分布乱数をBackendに依存して生成"""
     if dtype in (np().float32, np().float64):
         return (rng.normal(loc=mean, scale=var**0.5, size=size)).astype(dtype)
-    elif dtype in (np().complex64, np().complex128):
+    elif dtype == np().complex64:
         return (
-            rng.normal(loc=mean, scale=(var/2)**0.5, size=size)
-            + 1j * rng.normal(loc=mean, scale=(var/2)**0.5, size=size)
-        ).astype(dtype)
+            rng.normal(loc=mean, scale=(var/2)**0.5, size=size).astype(np().float32)
+            + 1j * rng.normal(loc=mean, scale=(var/2)**0.5, size=size).astype(np().float32)
+        )
+    elif dtype == np().complex128:
+        return (
+            rng.normal(loc=mean, scale=(var/2)**0.5, size=size).astype(np().float64)
+            + 1j * rng.normal(loc=mean, scale=(var/2)**0.5, size=size).astype(np().float64)
+        )
     else:
         raise ValueError("Unsupported dtype.")
 

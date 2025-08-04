@@ -12,7 +12,7 @@ def load_image_as_array(filename: str, normalize: bool = True) -> np().ndarray:
         max_val = np().max(img)
         if max_val > 0:
             img /= max_val
-    return img
+    return np().asarray(img)
 
 def load_data_image(name: str, data_dir: str = None, normalize: bool = True) -> np().ndarray:
     """

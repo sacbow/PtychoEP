@@ -10,3 +10,4 @@ def Damping(r_raw, gamma_raw, r_old, gamma_old, damping):
     r = damping*r_raw + (1-damping)*r_old
     gamma = 1/(damping/(gamma_raw**0.5) + (1-damping)/(gamma_old**0.5))**2
     return r, gamma
+

@@ -8,6 +8,7 @@ class UncertainArray:
     """
     def __init__(self, mean: np().ndarray, precision: np().ndarray = 1.0, dtype = np().complex64):
         self.mean = np().asarray(mean, dtype = dtype)
+        self.shape = mean.shape
         self.dtype = dtype
         if np().isscalar(precision) or precision.ndim == 0:
             self.scalar_precision = True
@@ -19,12 +20,19 @@ class UncertainArray:
             raise ValueError("precision shape mismatch.")
 
     @classmethod
-    def zeros(cls, shape, dtype=np().complex64):
-        return cls(np().zeros(shape, dtype=dtype), np().ones(shape, dtype=np().float32))
+    def zeros(cls, shape, dtype=np().complex64, scalar_precision = True):
+        if scalar_precision:
+            return cls(np().zeros(shape, dtype=dtype), 1.0)
+        else:
+            return cls(np().zeros(shape, dtype=dtype), np().ones(shape, dtype=np().float32))
+
     
     @classmethod
-    def normal(cls, shape, rng, dtype=np().complex64):
-        return cls(normal(rng=rng, size=shape, dtype=dtype), np().ones(shape, dtype=np().float32), dtype=dtype)
+    def normal(cls, shape, rng, dtype=np().complex64, scalar_precision = True):
+        if scalar_precision:
+            return cls(normal(rng=rng, size=shape, dtype=dtype), 1.0)
+        else:
+            return cls(normal(rng=rng, size=shape, dtype=dtype), np().ones(shape, dtype=np().float32))
 
     def copy(self):
         return UncertainArray(self.mean.copy(), self.precision.copy(), dtype=self.dtype)

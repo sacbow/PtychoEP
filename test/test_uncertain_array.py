@@ -24,9 +24,9 @@ def test_array_precision_init(backend):
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_zeros_and_normal(backend):
     set_backend(backend)
-    ua_zero = UncertainArray.zeros((3, 3))
+    ua_zero = UncertainArray.zeros((3, 3), scalar_precision = True)
     assert ua_zero.mean.shape == (3, 3)
-    assert ua_zero.scalar_precision is False
+    assert ua_zero.scalar_precision is True
 
     rng = get_rng(42)
     ua_norm = UncertainArray.normal((3, 3), rng)

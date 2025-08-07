@@ -21,7 +21,7 @@ class Object:
         if data.indices is None:
             raise ValueError(f"indices not set for data at position {data.position}")
         self.data_registry[data] = data.indices
-        random_msg = UA.normal(rng = self.rng, shape = data.diffraction.shape, dtype = np().complex64)
+        random_msg = UA.normal(rng = self.rng, shape = data.diffraction.shape, scalar_precision= False)
         self.msg_from_data[data] = random_msg
         self.belief.add(random_msg, data.indices)
 
@@ -44,6 +44,12 @@ class Object:
         if indices is None:
             raise ValueError("Data not registered to object")
         return self.belief.get_ua(indices)
+    
+    def send_msg_to_data(self, data: DiffractionData) -> UA:
+        belief_patch = self.get_patch_ua(self, data)
+        incoming_msg = self.msg_from_data[data]
+        msg_to_send = belief_patch/incoming_msg
+        return msg_to_send
 
     def send_msg_to_prior(self) -> UA:
         if self.msg_from_prior is None:

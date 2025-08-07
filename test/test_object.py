@@ -36,7 +36,7 @@ def test_register_and_receive(dummy_data):
 def test_send_msg_to_prior(dummy_data):
     obj = Object(shape=(32, 32), rng=get_rng())
     obj.register_data(dummy_data)
-    obj.receive_msg_from_prior(UA.zeros((32, 32)))
+    obj.receive_msg_from_prior(UA.zeros((32, 32), scalar_precision = False))
 
     output_msg = obj.send_msg_to_prior()
     belief = obj.get_belief()

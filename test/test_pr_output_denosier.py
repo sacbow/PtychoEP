@@ -17,7 +17,6 @@ def make_dummy_data(shape=(16, 16)):
     amp = backend_np().ones(shape, dtype=backend_np().float32)
     phase = backend_np().zeros(shape, dtype=backend_np().float32)
     diffraction = amp * backend_np().exp(1j * phase)
-    y = backend_np().abs(diffraction) ** 2
 
     return DiffractionData(
         position=(0, 0),
@@ -44,13 +43,11 @@ def test_forward_msg_basic():
     # 型チェック
     assert isinstance(out_msg, UA)
     assert out_msg.mean.shape == shape
-    assert out_msg.precision.shape == shape or out_msg.scalar_precision
+    assert out_msg.scalar_precision or out_msg.precision.shape == shape
 
-    # 精度値が正
+    # 精度がすべて正
     assert backend_np().all(out_msg.precision > 0)
 
-    # metaにmseが含まれる
-    assert hasattr(out_msg, "meta")
-    assert "mse" in out_msg.meta
-    assert isinstance(out_msg.meta["mse"], float)
-    assert out_msg.meta["mse"] >= 0
+    # MSE誤差の確認
+    assert isinstance(denoiser.error, float)
+    assert denoiser.error >= 0

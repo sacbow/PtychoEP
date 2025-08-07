@@ -46,3 +46,10 @@ class DiffractionData:
     def summary(self) -> str:
         """データの簡単な情報を文字列で返す。"""
         return f"Pos={self.position}, shape={self.diffraction.shape}, meta={self.meta}"
+    
+    def __hash__(self):
+        # 基本的にはインスタンスIDに基づくハッシュ（ユニーク性を担保）
+        return id(self)
+
+    def __eq__(self, other):
+        return self is other

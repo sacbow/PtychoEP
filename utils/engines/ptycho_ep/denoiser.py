@@ -80,7 +80,10 @@ class SparsePriorDenoiser(BaseDenoiser):
 
     def compute_forward_msg(self) -> UA:
         self.compute_belief()
-        return self.belief / self.input_msg
+        if self.input_msg.scalar_precision:
+            return self.belief.to_scalar_precision() / self.input_msg
+        else:
+            return self.belief / self.input_msg
 
 # --- Output denosier of Phase Retrieval ---
 from .uncertain_array import UncertainArray as UA
@@ -99,11 +102,9 @@ class PROutputDenoiser(BaseDenoiser):
         super().__init__(shape=shape, damping=damping)
         self.y = data.intensity()  # 強度データ
         self.gamma_w = gamma_w
+        self.error = 0
 
     def compute_belief(self):
-        raise NotImplementedError("PROutputDenoiser does not compute a belief (only sends messages).")
-
-    def compute_forward_msg(self):
         if self.input_msg is None:
             raise RuntimeError("No input message provided.")
 
@@ -116,7 +117,7 @@ class PROutputDenoiser(BaseDenoiser):
         p_ang = p / np().maximum(p_abs, 1e-12)  # 単位複素数で angle を代替（高速）
 
         # 観測値と振幅推定値のMSE
-        mse = float(np().mean((p_abs - np().sqrt(self.y))**2))
+        self.error = float(np().mean((p_abs - np().sqrt(self.y))**2))
 
         # PR denoising step（スカラー近似）
         y_p = np().mean(self.y / np().maximum(p_abs, 1e-12))
@@ -128,11 +129,11 @@ class PROutputDenoiser(BaseDenoiser):
         lam = 2 * (self.gamma_w + 2 * tau) / (self.gamma_w * y_p / tau + 4)
 
         # 出力メッセージ
-        output_msg = UA(mean=z, precision=lam.astype(np().float32), dtype=p.dtype)
-
-        # 誤差情報を付加（属性に保存するか、outputに含めてもよい）
-        output_msg.meta = {"mse": mse}
-
-        return output_msg
-
-
+        self.belief = UA(mean=z, precision=lam.astype(np().float32), dtype=p.dtype)
+    
+    def compute_forward_msg(self) -> UA:
+        self.compute_belief()
+        if self.input_msg.scalar_precision:
+            return self.belief.to_scalar_precision() / self.input_msg
+        else:
+            return self.belief / self.input_msg

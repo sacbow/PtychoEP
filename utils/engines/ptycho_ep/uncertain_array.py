@@ -87,3 +87,33 @@ class UncertainArray:
         ) ** 2
 
         return UncertainArray(mean=mean_damped, precision=gamma_damped, dtype=self.dtype)
+
+# --- fft utils ---
+from .uncertain_array import UncertainArray as UA
+
+def fft_ua(uarray: UA, norm="ortho") -> UA:
+    """
+    UA.mean に fft2 を適用し、精度はスカラーに変換（調和平均）。
+    """
+    fft_mean = np().fft.fft2(uarray.mean, norm=norm)
+    if uarray.scalar_precision:
+        scalar_precision = uarray.precision
+    else:
+        variance = 1.0 / uarray.precision
+        scalar_precision = 1.0 / np().mean(variance)
+
+    return UA(mean=fft_mean, precision=scalar_precision, dtype=uarray.dtype)
+
+def ifft_ua(uarray: UA, norm="ortho") -> UA:
+    """
+    UA.mean に ifft2 を適用し、精度はスカラーに変換（調和平均）。
+    """
+    ifft_mean = np().fft.ifft2(uarray.mean, norm=norm)
+    if uarray.scalar_precision:
+        scalar_precision = uarray.precision
+    else:
+        variance = 1.0 / uarray.precision
+        scalar_precision = 1.0 / np().mean(variance)
+
+    return UA(mean=ifft_mean, precision=scalar_precision, dtype=uarray.dtype)
+

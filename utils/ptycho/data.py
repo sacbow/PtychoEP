@@ -16,10 +16,17 @@ class DiffractionData:
     diffraction: np().ndarray
     meta: dict = field(default_factory=dict)
     indices: Tuple[np().ndarray, np().ndarray] = None
+    gamma_w: float = None
 
     def intensity(self) -> np().ndarray:
         """回折像の強度（振幅^2）を返す。"""
         return np().abs(self.diffraction) ** 2
+    
+    def get_gamma_w(self):
+        if self.gamma_w is None:
+            raise ValueError("gamma_w is not set for this diffraction data.")
+        return self.gamma_w
+
 
     def show(self, ax=None, log_scale=True, cmap="jet"):
         """matplotlibを用いて回折像を可視化。"""

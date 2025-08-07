@@ -4,7 +4,7 @@ from ..rng_utils import get_rng, normal, poisson
 
 class Noise(ABC):
     """ノイズモデル基底クラス（強度ベース dB単位のSN比計算を内蔵）"""
-
+ 
     def __matmul__(self, ptycho):
         ptycho.noise_stats = self._apply_noise_and_compute_snr(ptycho)
         return ptycho
@@ -35,6 +35,7 @@ class GaussianNoise(Noise):
             clean = d.diffraction.copy()
             noise = normal(rng, mean=0.0, var=self.var, size=d.diffraction.shape, dtype=d.diffraction.dtype)
             d.diffraction = d.diffraction + noise
+            d.gamma_w = 1.0 / self.var
             snr_values.append(self._compute_snr_db(clean, d.diffraction))
 
         snr_mean = sum(snr_values) / len(snr_values) if snr_values else 0.0
@@ -63,6 +64,7 @@ class PoissonNoise(Noise):
             sampled_counts = poisson(rng = rng, lam = expected_counts).astype(np().float32)
             noisy_intensity = sampled_counts / self.scale
             d.diffraction = np().sqrt(noisy_intensity).astype(clean.dtype)
+            d.gamma_w = 4.0 * self.scale # approx: Var[sqrt(Poisson(λ)/scale)] ≈ 1/(4*scale)
             snr_values.append(self._compute_snr_db(clean, d.diffraction))
 
         snr_mean = sum(snr_values) / len(snr_values) if snr_values else 0.0

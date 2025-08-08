@@ -1,22 +1,16 @@
 from dataclasses import dataclass, field
-from typing import Tuple, Any
+from typing import Tuple, Optional, Union
 from ..backend import np
+
+IdxType = Optional[Tuple[slice, slice]]
 
 @dataclass
 class DiffractionData:
-    """
-    1スキャン位置に対応する回折像データを格納するクラス。
-
-    Attributes:
-        position (Tuple[int, int]): スキャン位置 (y, x) ピクセル座標。
-        diffraction: 回折像データ (2D array)。
-        meta (dict): 任意のメタデータ（例: 時刻、条件ラベル）。
-    """
-    position: Tuple[int, int]
+    position: Tuple[int, int]                     # (y, x)
     diffraction: np().ndarray
     meta: dict = field(default_factory=dict)
-    indices: Tuple[np().ndarray, np().ndarray] = None
-    gamma_w: float = None
+    indices: IdxType = None                       # ← ndarray から slice に変更
+    gamma_w: Optional[float] = None
 
     def intensity(self) -> np().ndarray:
         """回折像の強度（振幅^2）を返す。"""

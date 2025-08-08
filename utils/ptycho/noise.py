@@ -15,12 +15,10 @@ class Noise(ABC):
 
     def _compute_snr_db(self, clean_amp, noisy_amp):
         """強度ベース (Intensity) でのSN比[dB]を計算"""
-        clean_intensity = np().abs(clean_amp) ** 2
-        noisy_intensity = np().abs(noisy_amp) ** 2
-        noise_intensity = noisy_intensity - clean_intensity
+        noise_intensity = (clean_amp - noisy_amp)**2
 
-        signal_power = np().sum(clean_intensity)
-        noise_power = np().sum(noise_intensity ** 2)
+        signal_power = np().sum(clean_amp**2)
+        noise_power = np().sum(noise_intensity)
         snr_db = 10 * np().log10(signal_power / (noise_power + 1e-12))
         return snr_db
 

@@ -21,16 +21,27 @@ def create_simple_ptycho_with_diffractions():
     p.set_diffraction_from_forward(diffs)
     return p
 
+def _indices_to_arrays(idx, xp):
+    """(slice,slice) or (YY,XX ndarray) -> (YY,XX ndarray)"""
+    y, x = idx
+    if isinstance(y, slice) and isinstance(x, slice):
+        yy = xp.arange(y.start, y.stop)
+        xx = xp.arange(x.start, x.stop)
+        YY, XX = xp.meshgrid(yy, xx, indexing="ij")
+        return YY, XX
+    return y, x
+
 def test_indices_shape_and_values():
-    """DiffractionData.indicesが正しい形状で生成されているかを確認"""
     p = create_simple_ptycho_with_diffractions()
+    xp = backend_np()
+    prb_len = p.prb_len
     for d in p._diff_data:
-        Y, X = d.indices
-        assert Y.shape == (p.prb_len, p.prb_len)
-        assert X.shape == (p.prb_len, p.prb_len)
-        # Y,Xはint型の座標であること
-        assert backend_np().issubdtype(Y.dtype, backend_np().integer)
-        assert backend_np().issubdtype(X.dtype, backend_np().integer)
+        YY, XX = _indices_to_arrays(d.indices, xp)
+        assert YY.shape == (prb_len, prb_len)
+        assert XX.shape == (prb_len, prb_len)
+        # dtype が整数であること
+        assert xp.issubdtype(YY.dtype, xp.integer)
+        assert xp.issubdtype(XX.dtype, xp.integer)
 
 def test_compute_illumination_output():
     """compute_illuminationの出力が正しい形状・性質を持つかを確認"""

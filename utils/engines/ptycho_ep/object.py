@@ -10,7 +10,7 @@ class Object:
         self.dtype = dtype
         self.belief = AUA(shape=shape, dtype=dtype)
         self.rng = rng
-        self.msg_from_prior: UA = UA.zeros(shape = shape)
+        self.msg_from_prior: UA = UA.zeros(shape = shape, scalar_precision=False)
         self.msg_from_data: dict[DiffractionData, UA] = {}
         self.data_registry: dict[DiffractionData, tuple[slice, slice]] = {}
 
@@ -37,6 +37,8 @@ class Object:
         self.msg_from_data[data] = msg
 
     def receive_msg_from_prior(self, msg: UA):
+        self.belief.subtract(self.msg_from_prior)
+        self.belief.add(msg)
         self.msg_from_prior = msg
 
     def get_patch_ua(self, data: DiffractionData) -> UA:
@@ -46,7 +48,7 @@ class Object:
         return self.belief.get_ua(indices)
     
     def send_msg_to_data(self, data: DiffractionData) -> UA:
-        belief_patch = self.get_patch_ua(self, data)
+        belief_patch = self.get_patch_ua(data)
         incoming_msg = self.msg_from_data[data]
         msg_to_send = belief_patch/incoming_msg
         return msg_to_send

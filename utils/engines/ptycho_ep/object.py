@@ -5,25 +5,37 @@ from ...ptycho.data import DiffractionData  # 実際のインポートパスに�
 
 
 class Object:
-    def __init__(self, shape, rng, dtype=np().complex64):
+    def __init__(self, shape, rng, dtype=np().complex64, init_ua: UA | None = None):
         self.shape = shape
         self.dtype = dtype
         self.belief = AUA(shape=shape, dtype=dtype)
         self.rng = rng
-        self.msg_from_prior: UA = UA.zeros(shape = shape, scalar_precision=False)
+
+        # ★ 全域の初期UA（未指定ならランダムで生成）
+        #   空間的に相関のある“共通の場”から、各パッチの初期メッセージを切り出す
+        self.init_ua: UA = init_ua if init_ua is not None \
+            else UA.normal(shape=shape, rng=self.rng, scalar_precision=False)
+
+        self.msg_from_prior: UA = UA.zeros(shape=shape, scalar_precision=False)
         self.msg_from_data: dict[DiffractionData, UA] = {}
         self.data_registry: dict[DiffractionData, tuple[slice, slice]] = {}
 
-    def register_data(self, data: DiffractionData):
-        """
-        DiffractionData オブジェクトを登録し、スライス位置情報を保持。
-        """
+    def register_data(self, data: DiffractionData, probe: np().ndarray | None = None,
+                      precision_floor: float = 0.0):
         if data.indices is None:
             raise ValueError(f"indices not set for data at position {data.position}")
         self.data_registry[data] = data.indices
-        random_msg = UA.normal(rng = self.rng, shape = data.diffraction.shape, scalar_precision= False)
-        self.msg_from_data[data] = random_msg
-        self.belief.add(random_msg, data.indices)
+
+        # ★ 全域 init_ua から該当パッチを切り出す
+        ua0 = self.init_ua[data.indices]   # UA を返す（__getitem__）
+
+        # （任意）プローブで重み付けしたい場合：scaled を併用
+        if probe is not None:
+            # mean × probe, precision × |probe|^2（ゼロ強度は floor に）
+            ua0 = ua0.scaled(probe, precision_floor=precision_floor)
+
+        self.msg_from_data[data] = ua0
+        self.belief.add(ua0, data.indices)
 
     def receive_msg_from_data(self, data: DiffractionData, msg: UA):
         indices = self.data_registry.get(data)

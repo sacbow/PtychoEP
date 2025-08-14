@@ -15,11 +15,10 @@ class FFTChannel:
         cached_output (UA): backward結果をキャッシュ（必要に応じて）
     """
 
-    def __init__(self, rng):
+    def __init__(self):
         self.msg_from_input: UA = None # UA with array precision
         self.msg_from_output: UA = None # UA with scalar precision
         self.output_belief: UA = None # UA with scalar precision
-        self.rng = rng
     
     def receive_msg_from_input(self, incoming : UA):
         self.msg_from_input = incoming
@@ -34,7 +33,7 @@ class FFTChannel:
         if self.msg_from_input is None:
             raise RuntimeError("no input message to forward")
         if self.output_belief is None or self.msg_from_output is None:
-            return UA.normal(rng = self.rng, shape = self.msg_from_input.shape, scalar_precision=True)
+            return fft_ua(self.msg_from_input)
         else:
             return self.output_belief/self.msg_from_output
 

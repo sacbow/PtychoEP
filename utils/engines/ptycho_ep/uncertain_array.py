@@ -80,6 +80,24 @@ class UncertainArray:
         array_precision = np().ones_like(self.mean.real, dtype=np().float32) * self.precision
         return UncertainArray(self.mean.copy(), precision=array_precision, dtype=self.dtype)
     
+    def slice(self, indices: tuple[slice, slice]) -> "UncertainArray":
+        """(slice, slice) でパッチを切り出した UA を返す。"""
+        y, x = indices
+        mean_sub = self.mean[y, x]
+        if self.scalar_precision:
+            prec_sub = self.precision            # スカラーはそのまま
+        else:
+            prec_sub = self.precision[y, x]
+        return UncertainArray(mean=mean_sub, precision=prec_sub, dtype=self.dtype)
+
+    # シンタックスシュガー: ua[yy, xx] で UA が返る
+    def __getitem__(self, key) -> "UncertainArray":
+        # key は (slice, slice) を想定。必要に応じて None 全域などの扱いを追加。
+        if isinstance(key, tuple) and len(key) == 2 \
+           and isinstance(key[0], slice) and isinstance(key[1], slice):
+            return self.slice(key)
+        raise TypeError("UncertainArray.__getitem__ expects (slice, slice)")
+    
     def damp_with(self, other: UncertainArray, damping: float) -> UncertainArray:
         """
         自身(self)をraw、otherをoldとしてdampingを適用する。
@@ -95,6 +113,39 @@ class UncertainArray:
         ) ** 2
 
         return UncertainArray(mean=mean_damped, precision=gamma_damped, dtype=self.dtype)
+    
+    def scaled(self, gain, *, to_array_when_nonuniform: bool = True, precision_floor: float = 0.0):
+        """
+        UA を複素ゲイン gain で画素毎にスケーリングする。
+        mean'      = gain * mean
+        precision' = |gain|^2 * precision
+        gain: スカラー or ndarray（mean とブロードキャスト可能）
+        to_array_when_nonuniform:
+            True  : self.precision がスカラーで gain が非一様なら array-precision に昇格
+            False : たとえ非一様でもスカラーのままにしたい（特殊用途）
+        precision_floor:
+            数値安定用の下限（0.0 推奨。>0 にするとゼロ強度画素にも微小情報を残す）
+        """
+        xp = np()
+        g = xp.asarray(gain)
+        g_abs2 = xp.abs(g)**2
+
+        new_mean = g * self.mean
+
+        if xp.isscalar(g) or g.shape == () or (g_abs2 == g_abs2.flat[0]).all():
+            # ゲインが一様
+            new_prec = xp.maximum(self.precision * g_abs2, precision_floor)
+            return UncertainArray(mean=new_mean, precision=new_prec, dtype=self.dtype)
+
+        # ゲインが非一様
+        if self.scalar_precision and to_array_when_nonuniform:
+            # スカラー精度 → 配列精度に昇格して各画素で重み付け
+            new_prec = xp.maximum(g_abs2.astype(xp.float32) * self.precision, precision_floor)
+            return UncertainArray(mean=new_mean, precision=new_prec, dtype=self.dtype)
+        else:
+            # もともと配列精度、またはスカラーのまま運用したい場合
+            new_prec = xp.maximum(self.precision * g_abs2.astype(xp.float32), precision_floor)
+            return UncertainArray(mean=new_mean, precision=new_prec, dtype=self.dtype)
 
 # --- fft utils ---
 from .uncertain_array import UncertainArray as UA

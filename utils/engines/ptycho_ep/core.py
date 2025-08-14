@@ -53,8 +53,8 @@ class PtychoEP:
         self.fft_channels = {}
         self.output_nodes = {}
         for d in ptycho._diff_data:
-            self.obj_node.register_data(d)
-            ch = FFTChannel(rng=rng)
+            self.obj_node.register_data(d, probe=self.probe.data)
+            ch = FFTChannel()
             self.fft_channels[d] = ch
             gamma_w = d.gamma_w if d.gamma_w is not None else 1.0 
             out = PROutputDenoiser(shape=d.diffraction.shape, data=d,
@@ -67,7 +67,7 @@ class PtychoEP:
             self.prior = None
         elif prior_type == "sparse":
             self.prior = SparsePriorDenoiser(shape=(ptycho.obj_len, ptycho.obj_len),
-                                             damping=damping, **prior_kwargs)
+                                             damping=1.0, **prior_kwargs)
         else:
             raise ValueError(f"Unknown prior_type: {prior_type}")
 

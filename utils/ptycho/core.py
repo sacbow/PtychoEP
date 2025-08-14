@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Union, Optional, Callable
 from .data import DiffractionData
 from ..backend import np
 
@@ -46,6 +46,38 @@ class Ptycho:
     def clear_diffraction_data(self):
         """登録されている回折データを全て削除"""
         self._diff_data.clear()
+    
+    def sort_diffraction_data(
+        self,
+        key: Union[str, Callable[[DiffractionData], float]] = "center_distance",
+        center: tuple[int, int] | None = None,
+        reverse: bool = False,
+    ):
+        """
+        _diff_data の並びを並べ替える。
+        key:
+          - "center_distance": 物体中心(または指定center)からの距離
+          - "meta:sort_key":   d.meta["sort_key"] を使う
+          - callable:          DiffractionData -> スカラー の関数
+        """
+        if callable(key):
+            score = key
+        elif key == "center_distance":
+            if center is None:
+                if self.obj_len is None:
+                    raise ValueError("object length unknown; set object first or specify center.")
+                center = (self.obj_len // 2, self.obj_len // 2)
+            cy, cx = center
+            def score(d: DiffractionData):
+                y, x = d.position
+                return (y - cy) ** 2 + (x - cx) ** 2
+        elif key == "meta:sort_key":
+            def score(d: DiffractionData):
+                return d.meta.get("sort_key", 0.0)
+        else:
+            raise ValueError(f"unknown key: {key}")
+
+        self._diff_data.sort(key=score, reverse=reverse)
 
     def set_diffraction_from_forward(self, diff_list: List[DiffractionData], append: bool = False):
         """

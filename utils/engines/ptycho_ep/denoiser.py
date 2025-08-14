@@ -108,28 +108,42 @@ class PROutputDenoiser(BaseDenoiser):
         if self.input_msg is None:
             raise RuntimeError("No input message provided.")
 
-        # --- 入力から必要な情報を取り出す
-        p = self.input_msg.mean
-        tau = self.input_msg.precision
+        xp = np()
 
-        # 振幅と位相
-        p_abs = np().abs(p)
-        p_ang = p / np().maximum(p_abs, 1e-12)  # 単位複素数で angle を代替（高速）
+        # --- 入力の取り出し ---
+        z0   = self.input_msg.mean                # 旧: p
+        tau  = self.input_msg.precision           # 旧: tau (精度)
+        v0   = 1.0 / tau                          # 旧: v0 (分散)
 
-        # 観測値と振幅推定値のMSE
-        self.error = float(np().mean((p_abs - np().sqrt(self.y))**2))
+        # 観測は強度なので振幅に直す
+        y_amp = xp.sqrt(self.y)
 
-        # PR denoising step（スカラー近似）
-        y_p = np().mean(self.y / np().maximum(p_abs, 1e-12))
-        numer = tau * p_abs + (self.gamma_w / 2) * self.y
-        denom = tau + self.gamma_w / 2
-        z = p_ang * numer / denom
+        # 観測ノイズの「標準偏差」相当（精度 gamma_w に対して）
+        v = 1.0 / xp.sqrt(self.gamma_w)
 
-        # 精度推定
-        lam = 2 * (self.gamma_w + 2 * tau) / (self.gamma_w * y_p / tau + 4)
+        # 位相と絶対値
+        abs_z0      = xp.abs(z0)
+        abs_z0_safe = xp.maximum(abs_z0, 1e-12)
+        unit_phase  = z0 / abs_z0_safe
 
-        # 出力メッセージ
-        self.belief = UA(mean=z, precision=lam.astype(np().float32), dtype=p.dtype)
+        # --- Laplace近似 (amplitude-domain) ---
+        # 振幅推定
+        z_hat_amp = (v0 * y_amp + 2.0 * v * abs_z0_safe) / (v0 + 2.0 * v)
+        z_hat     = unit_phase * z_hat_amp
+
+        # 分散近似（クリップで数値安定化）
+        v_hat = (v0 * (v0 * y_amp + 4.0 * v * abs_z0_safe)) / (2.0 * abs_z0_safe * (v0 + 2.0 * v))
+        v_hat = xp.maximum(v_hat, 1e-12)
+
+        # 近似事後の精度
+        lam = (1.0 / v_hat).astype(xp.float32)
+
+        # --- belief をセット ---
+        self.belief = UA(mean=z_hat, precision=lam, dtype=z0.dtype)
+
+        # --- ロギング用誤差（振幅MSEのプロキシ） ---
+        self.error = float(xp.mean((abs_z0 - y_amp)**2))
+
     
     def compute_forward_msg(self) -> UA:
         self.compute_belief()

@@ -105,34 +105,37 @@ class PROutputDenoiser(BaseDenoiser):
         self.error = 0
 
     def compute_belief(self):
+        """
+        入力メッセージ self.input_msg から Laplace近似による事後分布を計算。
+        DiffractionData.diffraction は振幅データなので平方根は不要。
+        """
         if self.input_msg is None:
             raise RuntimeError("No input message provided.")
 
         xp = np()
 
         # --- 入力の取り出し ---
-        z0   = self.input_msg.mean                # 旧: p
-        tau  = self.input_msg.precision           # 旧: tau (精度)
-        v0   = 1.0 / tau                          # 旧: v0 (分散)
+        z0 = self.input_msg.mean
+        tau = self.input_msg.precision           # 精度
+        v0 = 1.0 / tau                           # 分散
 
-        # 観測は強度なので振幅に直す
-        y_amp = xp.sqrt(self.y)
+        # 観測（振幅データ）
+        y = self.y                               # DiffractionData.diffraction
 
-        # 観測ノイズの「標準偏差」相当（精度 gamma_w に対して）
-        v = 1.0 / xp.sqrt(self.gamma_w)
+        # 観測ノイズの標準偏差相当（gamma_w は精度）
+        v = 1.0 / self.gamma_w                   # sqrt は不要
 
         # 位相と絶対値
-        abs_z0      = xp.abs(z0)
+        abs_z0 = xp.abs(z0)
         abs_z0_safe = xp.maximum(abs_z0, 1e-12)
-        unit_phase  = z0 / abs_z0_safe
+        unit_phase = z0 / abs_z0_safe
 
         # --- Laplace近似 (amplitude-domain) ---
-        # 振幅推定
-        z_hat_amp = (v0 * y_amp + 2.0 * v * abs_z0_safe) / (v0 + 2.0 * v)
-        z_hat     = unit_phase * z_hat_amp
+        z_hat_amp = (v0 * y + 2.0 * v * abs_z0_safe) / (v0 + 2.0 * v)
+        z_hat = unit_phase * z_hat_amp
 
         # 分散近似（クリップで数値安定化）
-        v_hat = (v0 * (v0 * y_amp + 4.0 * v * abs_z0_safe)) / (2.0 * abs_z0_safe * (v0 + 2.0 * v))
+        v_hat = (v0 * (v0 * y + 4.0 * v * abs_z0_safe)) / (2.0 * abs_z0_safe * (v0 + 2.0 * v))
         v_hat = xp.maximum(v_hat, 1e-12)
 
         # 近似事後の精度
@@ -142,7 +145,8 @@ class PROutputDenoiser(BaseDenoiser):
         self.belief = UA(mean=z_hat, precision=lam, dtype=z0.dtype)
 
         # --- ロギング用誤差（振幅MSEのプロキシ） ---
-        self.error = float(xp.mean((abs_z0 - y_amp)**2))
+        self.error = float(xp.mean((abs_z0 - y)**2))
+
 
     
     def compute_forward_msg(self) -> UA:

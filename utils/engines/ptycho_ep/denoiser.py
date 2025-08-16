@@ -1,157 +1,97 @@
 from __future__ import annotations
 from .uncertain_array import UncertainArray as UA
 from ...backend import np
-
-# --- BaseDenoiser ---
-class BaseDenoiser:
-    def __init__(self, shape, damping: float = 1.0):
-        self.shape = shape
-        self.damping = damping
-        self.input_msg: UA = None
-        self.old_output_msg: UA = None
-        self.belief: UA = None
-
-    def receive_msg(self, msg: UA):
-        self.input_msg = msg
-
-    def forward_msg(self) -> UA:
-        raw_output_msg = self.compute_forward_msg()
-        if self.damping == 1.0 or self.old_output_msg is None:
-            self.old_output_msg = raw_output_msg
-            return raw_output_msg
-        else:
-            damped_output_msg = raw_output_msg.damp_with(self.old_output_msg, self.damping)
-            self.old_output_msg = damped_output_msg
-            return damped_output_msg
-
-    def compute_forward_msg(self) -> UA:
-        raise NotImplementedError()
-
-    def compute_belief(self):
-        raise NotImplementedError()
-
-# --- GaussianPriorDenoiser ---
-class GaussianPriorDenoiser(BaseDenoiser):
-    def compute_belief(self):
-        if self.input_msg is None:
-            raise RuntimeError("No input message")
-        self.belief = UA.zeros(shape=self.shape, dtype=self.input_msg.dtype) * self.input_msg
-
-    def compute_forward_msg(self) -> UA:
-        return UA.zeros(shape=self.shape, dtype=self.input_msg.dtype)
-
-# --- Spike-and-Slab ---
-from .uncertain_array import UncertainArray as UA
-from .denoiser import BaseDenoiser
-from ...backend import np
-
-class SparsePriorDenoiser(BaseDenoiser):
-    """
-    Bernoulli-Gaussianスパース事前分布に基づくdenoiser。
-    
-    事前分布:  X ~ (1 - rho) * δ0 + rho * N(0, 1)
-    """
-
-    def __init__(self, shape, rho: float = 0.1, damping: float = 1.0):
-        super().__init__(shape=shape, damping=damping)
-        self.rho = rho
-
-    def compute_belief(self):
-        if self.input_msg is None:
-            raise RuntimeError("No input message")
-
-        r, gamma = self.input_msg.mean, self.input_msg.precision
-        abs_r2 = np().abs(r) ** 2
-        gamma_ratio = gamma / (gamma + 1)
-
-        A = np().maximum(
-            self.rho * np().exp(-gamma_ratio * abs_r2) / (1 + gamma),
-            1e-12
-        )
-        B = (1 - self.rho) * np().exp(-gamma * abs_r2)
-        pi = A / (A + B)
-        one_minus_pi = B / (A + B)
-
-        mean = pi * gamma_ratio * r
-        d_mean = gamma_ratio * (1 + gamma * one_minus_pi * gamma_ratio * abs_r2)
-        precision = gamma / d_mean
-
-        self.belief = UA(mean=mean, precision=precision, dtype=self.input_msg.dtype)
-
-    def compute_forward_msg(self) -> UA:
-        self.compute_belief()
-        if self.input_msg.scalar_precision:
-            return self.belief.to_scalar_precision() / self.input_msg
-        else:
-            return self.belief / self.input_msg
-
-# --- Output denosier of Phase Retrieval ---
-from .uncertain_array import UncertainArray as UA
-from .denoiser import BaseDenoiser
-from ...backend import np
 from ...ptycho.data import DiffractionData
+from typing import Optional
 
 
-class PROutputDenoiser(BaseDenoiser):
+class Denoiser:
     """
-    |z| + N(0, 1/gamma_w) モデルに基づく観測ノードdenoiser。
-    観測データと推定exit waveの誤差もforwardメッセージとともに返す。
+    Output Denoiser node for EP-based ptychography.
+
+    This node models the observation of noisy diffraction data |z| + noise
+    and performs a local approximation of the posterior over the complex field z.
     """
 
-    def __init__(self, shape, data: DiffractionData, gamma_w: float, damping: float = 1.0):
-        super().__init__(shape=shape, damping=damping)
-        self.y = data.intensity()  # 強度データ
-        self.gamma_w = gamma_w
-        self.error = 0
+    def __init__(self, diff: DiffractionData, parent: "FFTChannel"):
+        """
+        Initialize the Denoiser node.
+
+        Parameters
+        ----------
+        diff : DiffractionData
+            The observed diffraction data node (contains intensity, etc.).
+        parent : FFTChannel
+            The parent FFTChannel this denoiser is linked to.
+        """
+        self.diff = diff
+        self.damping = 0.9
+        self.parent = parent
+
+        self.y = diff.diffraction  # observed amplitude (not intensity)
+        self.gamma_w = diff.gamma_w if diff.gamma_w is not None else 1.0
+
+        self.msg_from_fft: Optional[UA] = None  # Forward message from FFTChannel
+        self.belief: Optional[UA] = None        # Posterior over z
+        self.error: float = 0.0                 # Optional amplitude MSE for logging
 
     def compute_belief(self):
         """
-        入力メッセージ self.input_msg から Laplace近似による事後分布を計算。
-        DiffractionData.diffraction は振幅データなので平方根は不要。
+        Compute the approximate posterior z_hat using Laplace approximation.
+        This implementation follows the Laplace approximation approach described in:
+
+        S. K. Shastri and P. Schniter,
+        "Fast and Robust Phase Retrieval via Deep Expectation-Consistent Approximation",
+        IEEE Trans. Signal Process., 2024.
+        See Eq. (38)-(39), Appendix A and B.
+
+        Uses:
+            y       = observed amplitude (sqrt of intensity)
+            z0      = mean of incoming message
+            v0      = variance of incoming message (1 / precision)
+            gamma_w = measurement precision
+
+        Sets self.belief with mean and precision.
         """
-        if self.input_msg is None:
-            raise RuntimeError("No input message provided.")
+        if self.msg_from_fft is None:
+            raise RuntimeError("Denoiser.compute_belief: msg_from_fft not set")
 
         xp = np()
+        z0 = self.msg_from_fft.mean
+        tau = self.msg_from_fft.precision
+        v0 = 1.0 / tau
 
-        # --- 入力の取り出し ---
-        z0 = self.input_msg.mean
-        tau = self.input_msg.precision           # 精度
-        v0 = 1.0 / tau                           # 分散
-
-        # 観測（振幅データ）
-        y = self.y                               # DiffractionData.diffraction
-
-        # 観測ノイズの標準偏差相当（gamma_w は精度）
-        v = 1.0 / self.gamma_w                   # sqrt は不要
-
-        # 位相と絶対値
         abs_z0 = xp.abs(z0)
         abs_z0_safe = xp.maximum(abs_z0, 1e-12)
         unit_phase = z0 / abs_z0_safe
 
-        # --- Laplace近似 (amplitude-domain) ---
-        z_hat_amp = (v0 * y + 2.0 * v * abs_z0_safe) / (v0 + 2.0 * v)
+        # Posterior mean (amplitude-domain Laplace approx)
+        z_hat_amp = (v0 * self.y + 2 * v0 * abs_z0_safe) / (v0 + 2 * v0)
         z_hat = unit_phase * z_hat_amp
 
-        # 分散近似（クリップで数値安定化）
-        v_hat = (v0 * (v0 * y + 4.0 * v * abs_z0_safe)) / (2.0 * abs_z0_safe * (v0 + 2.0 * v))
+        # Posterior precision
+        v_hat = (v0 * (v0 * self.y + 4 * v0 * abs_z0_safe)) / (2.0 * abs_z0_safe * (v0 + 2 * v0))
         v_hat = xp.maximum(v_hat, 1e-12)
+        precision = 1.0 / v_hat
 
-        # 近似事後の精度
-        lam = (1.0 / v_hat).astype(xp.float32)
+        self.belief = UA(mean=z_hat, precision=precision, dtype=z0.dtype)
+        self.error = float(xp.mean((abs_z0 - self.y) ** 2))
 
-        # --- belief をセット ---
-        self.belief = UA(mean=z_hat, precision=lam, dtype=z0.dtype)
+    def backward(self) -> None:
+        """
+        Backward message passing: update FFTChannel.msg_from_denoiser.
 
-        # --- ロギング用誤差（振幅MSEのプロキシ） ---
-        self.error = float(xp.mean((abs_z0 - y)**2))
+        This performs the following steps:
+        1. Computes the belief (posterior over z) via Laplace approximation.
+        2. Calculates the backward message as:
+            msg_back = belief / msg_from_fft
+        3. Applies damping:
+            msg_new = damp_with(prev_msg, damping=self.damping)
 
+        This damped message is then sent back to the FFTChannel.
+        """
 
-    
-    def compute_forward_msg(self) -> UA:
         self.compute_belief()
-        if self.input_msg.scalar_precision:
-            return self.belief.to_scalar_precision() / self.input_msg
-        else:
-            return self.belief / self.input_msg
+        msg_back_raw = self.belief.to_scalar_precision() / self.msg_from_fft
+        msg_back_new = msg_back_raw.damp_with(self.parent.msg_from_denoiser, damping = self.damping)
+        self.parent.msg_from_denoiser = msg_back_new

@@ -5,7 +5,6 @@ from ...backend import np
 from ...rng_utils import get_rng, normal
 from ...ptycho.data import DiffractionData
 from .probe import Probe
-from .denoiser import BaseDenoiser, PROutputDenoiser
 
 
 class Object:
@@ -60,7 +59,6 @@ class Object:
         # Pointers to external components
         self.data_registry: dict[DiffractionData, tuple[slice, slice]] = {}
         self.probe_registry: dict[DiffractionData, Probe] = {}
-        self.prior: BaseDenoiser | None = None
 
     def register_data(self, diff: DiffractionData):
         """

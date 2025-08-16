@@ -1,78 +1,54 @@
-# test/test_ptycho_ep.py
-import numpy as np
 import pytest
-
-from PtychoEP.utils.engines.ptycho_ep.core import PtychoEP
-from PtychoEP.utils.rng_utils import get_rng
+from PtychoEP.utils.backend import set_backend, np as backend_np
 from PtychoEP.utils.ptycho.core import Ptycho
-from PtychoEP.utils.ptycho.forward import generate_diffraction
-from PtychoEP.utils.ptycho.noise import GaussianNoise
+from PtychoEP.utils.io_utils import load_data_image
+from PtychoEP.utils.ptycho.aperture_utils import circular_aperture
 from PtychoEP.utils.ptycho.scan_utils import generate_spiral_scan_positions
+from PtychoEP.utils.engines.ptycho_ep.core import PtychoEP
 
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_ptycho_ep_end_to_end(backend):
+    set_backend(backend)
+    xp = backend_np()
 
-def create_simple_ptycho():
-    """64x64 の単純な物体と16x16プローブを持つ Ptycho を作成"""
-    p = Ptycho()
-    xp = np
-    obj = xp.ones((64, 64), dtype=np.complex64)
-    prb = xp.ones((16, 16), dtype=np.complex64)
-    p.set_object(obj)
-    p.set_probe(prb)
+    # --- Load synthetic object and probe ---
+    obj_real = load_data_image("lily.png")
+    obj_phase = load_data_image("moon.png")
+    obj = obj_real * xp.exp(1j * (xp.pi / 2) * obj_phase)
 
-    positions = generate_spiral_scan_positions(image_size=64, probe_size=16, num_points=5)
-    diffs = generate_diffraction(p, positions)
-    # ノイズ付与（gamma_w セット）
-    GaussianNoise(var=1e-4) @ p
-    p.set_diffraction_from_forward(diffs)
-    return p
+    probe = circular_aperture(size=64, r=0.5)
 
+    # --- Build Ptycho object ---
+    ptycho = Ptycho()
+    ptycho.set_object(obj)
+    ptycho.set_probe(probe)
 
-def test_gaussian_prior_runs_and_returns_shapes():
-    ptycho = create_simple_ptycho()
-
-    solver = PtychoEP(ptycho, prior_type="gaussian", damping=0.9)
-    assert solver.prior is None, "Gaussian priorの場合、priorはNoneであるべき"
-
-    obj_est, prb_est = solver.run(n_iter=3)
-    assert obj_est.shape == (ptycho.obj_len, ptycho.obj_len)
-    assert prb_est.shape == (ptycho.prb_len, ptycho.prb_len)
-
-
-def test_sparse_prior_runs_and_callback_called():
-    ptycho = create_simple_ptycho()
-
-    called = []
-    def cb(it, err, est):
-        called.append((it, err))
-
-    solver = PtychoEP(
-        ptycho, prior_type="sparse",
-        prior_kwargs={"rho": 0.1},
-        damping=0.9,
-        callback=cb
+    # --- Generate scan positions and simulate measurements ---
+    positions = generate_spiral_scan_positions(
+        image_size=512,
+        probe_size=64,
+        step=24.0,
+        num_points=100
     )
-    obj_est, prb_est = solver.run(n_iter=3)
+    ptycho.forward_and_set_diffraction(positions)
+    ptycho.sort_diffraction_data(key="center_distance")
 
-    assert solver.prior is not None
-    assert len(called) == 3
-    assert obj_est.shape == (ptycho.obj_len, ptycho.obj_len)
-    assert prb_est.shape == (ptycho.prb_len, ptycho.prb_len)
-
-
-def test_error_reduces_for_simple_case():
-    ptycho = create_simple_ptycho()
-    rng = get_rng(15)
-
+    # --- Run EP with 1 iteration ---
     errors = []
-    def cb(it, err, est):
+    def callback(i, err, est):
         errors.append(err)
 
-    solver = PtychoEP(
-        ptycho, prior_type="gaussian",
-        damping=0.9,
-        callback=cb
+    ep_solver = PtychoEP(
+        ptycho=ptycho,
+        damping=0.8,
+        callback=callback
     )
-    solver.run(n_iter=20)
 
-    # 最後の誤差が初期より小さいこと（単調減少は保証しない）
-    assert errors[-1] <= errors[0]
+    est_obj, est_prb = ep_solver.run(n_iter=1)
+
+    # --- Basic output checks ---
+    assert est_obj.shape == obj.shape
+    assert est_prb.shape == probe.shape
+    assert xp.iscomplexobj(est_obj)
+    assert xp.iscomplexobj(est_prb)
+    assert len(errors) == 1

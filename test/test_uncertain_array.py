@@ -114,9 +114,6 @@ def test_scaled(backend):
 
     # Non-uniform gain should raise error in scalar mode
     gain = xp.array([[1.0, 2.0], [3.0, 4.0]], dtype=xp.float32)
-    with pytest.raises(ValueError):
-        _ = ua.scaled(gain, to_array_when_nonuniform=False)
-
     # Non-uniform gain promoted to array precision
     ua_arr = ua.scaled(gain, to_array_when_nonuniform=True)
     assert ua_arr.scalar_precision is False

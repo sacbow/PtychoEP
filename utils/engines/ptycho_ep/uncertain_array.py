@@ -149,13 +149,9 @@ class UncertainArray:
             new_prec = self.precision / xp.maximum(g_abs2, precision_floor)
             return UncertainArray(mean=new_mean, precision=new_prec, dtype=self.dtype)
 
-        # array gain
-        if self.scalar_precision and to_array_when_nonuniform:
-            # スカラー精度 → 配列精度に昇格して各画素で重み付け
+        else:
             new_prec = self.precision / xp.maximum(g_abs2.astype(xp.float32) , precision_floor)
             return UncertainArray(mean=new_mean, precision=new_prec, dtype=self.dtype)
-        else:
-            raise ValueError("Cannot produce scalar-precision UA from array-gain")
 
 # --- fft utils ---
 from .uncertain_array import UncertainArray as UA

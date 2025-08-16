@@ -7,6 +7,7 @@ from .uncertain_array import UncertainArray as UA
 from ...backend import np
 from ...ptycho.data import DiffractionData
 from typing import Optional
+from .denoiser import Denoiser
 
 
 class FFTChannel:
@@ -30,7 +31,7 @@ class FFTChannel:
         """
         self.probe = parent_probe
         self.diff = diff
-
+        self.denoiser = Denoiser(diff = diff, parent = self)
         self.input_belief: Optional[UA] = None    # From Probe (exit wave before FFT)
         self.msg_to_probe: Optional[UA] = None    # Backward message to Probe
         self.msg_from_denoiser: Optional[UA] = None  # Message from OutputDenoiser (z-domain)

@@ -1,117 +1,89 @@
 # utils/engines/ptycho_ep/core.py
 
 from ...backend import np
-from ...rng_utils import get_rng, normal
+from ...rng_utils import get_rng
 from ...ptycho.data import DiffractionData
 from .object import Object
-from .probe import Probe
-from .fft_channel import FFTChannel
-from .denoiser import PROutputDenoiser, GaussianPriorDenoiser, SparsePriorDenoiser
+from .uncertain_array import UncertainArray as UA
 
 class PtychoEP:
-    def __init__(self, ptycho, prior_type="gaussian", prior_kwargs=None,
-                 damping=1.0, prb_init=None, callback=None):
-        """
-        EP-based ptychography solver.
+    """
+    Expectation Propagation (EP)-based ptychographic solver.
+    """
 
+    def __init__(self, ptycho, damping=0.7, seed : int | None = None, obj_init = None, prb_init=None, callback=None):
+        """
         Parameters
         ----------
         ptycho : Ptycho
-            Forward済みのPtychoインスタンス。
-        prior_type : str
-            "gaussian" または "sparse"。
-            "gaussian" の場合、AUA の初期精度=1.0 が平均0・精度1のガウス事前に
-            相当するため、prior ノードを構築せず prior 更新は行わない。
-            （差し替え処理を行っても状態は変わらないため、省略することで
-             不要な演算と数値誤差を避ける。）
-            "sparse" の場合は SparsePriorDenoiser を用いて G1 ノード更新を行う。
-        prior_kwargs : dict
-            PriorDenoiser に渡す追加パラメータ（例: {"rho": 0.1}）。
+            Ptycho object holding object/probe/diffraction geometry.
         damping : float
-            メッセージ更新の減衰係数。
+            Damping coefficient used in denoiser backward pass.
         prb_init : np.ndarray or None
-            プローブ初期値。None なら ptycho.prb をコピー。
-        callback : callable
-            各反復終了時に呼び出される関数 (iter, err, obj_est)。
+            Optional probe initialization. If None, uses ptycho.prb.
+        callback : callable or None
+            Function to be called after each iteration: callback(iter, error, object_est).
         """
-
         self.xp = np()
         self.ptycho = ptycho
         self.damping = damping
         self.callback = callback
+        self.prior = None  # Optional prior denoiser node (set externally if needed)
 
-        xp = self.xp
-        rng = get_rng()
+        rng = get_rng(seed)
 
-        # --- object init ---
-        self.obj_node = Object(shape=(ptycho.obj_len, ptycho.obj_len), rng=rng)
+        # --- Initialize object node ---
+        self.obj_node = Object(
+            shape=(ptycho.obj_len, ptycho.obj_len),
+            rng=rng,
+            initial_probe=prb_init if prb_init is not None else ptycho.prb,
+            initial_object=obj_init if obj_init is not None else None
+        )
 
-        # --- probe init ---
-        self.probe = Probe(prb_init if prb_init is not None else ptycho.prb)
-
-        # --- channels & output nodes ---
-        self.fft_channels = {}
-        self.output_nodes = {}
-        for d in ptycho._diff_data:
-            self.obj_node.register_data(d, probe=self.probe.data)
-            ch = FFTChannel()
-            self.fft_channels[d] = ch
-            gamma_w = d.gamma_w if d.gamma_w is not None else 1.0 
-            out = PROutputDenoiser(shape=d.diffraction.shape, data=d,
-                                  gamma_w=gamma_w, damping=damping)
-            self.output_nodes[d] = out
-
-        # --- prior node ---
-        prior_kwargs = prior_kwargs or {}
-        if prior_type == "gaussian":
-            self.prior = None
-        elif prior_type == "sparse":
-            self.prior = SparsePriorDenoiser(shape=(ptycho.obj_len, ptycho.obj_len),
-                                             damping=1.0, **prior_kwargs)
-        else:
-            raise ValueError(f"Unknown prior_type: {prior_type}")
+        # Register each diffraction data to the object
+        for diff in ptycho._diff_data:
+            self.obj_node.register_data(diff)
+            # damping is passed into each denoiser internally via FFTChannel
+            self.obj_node.probe_registry[diff].child.denoiser.damping = damping
 
     def run(self, n_iter=100):
         """
-        逐次EPループ
+        Run the EP update loop for a given number of iterations.
+
+        Parameters
+        ----------
+        n_iter : int
+            Number of EP iterations.
+
+        Returns
+        -------
+        object_estimate : np.ndarray
+            Final estimated object (complex-valued image).
+        probe_estimate : np.ndarray
+            Probe pattern (unchanged if not updated during inference).
         """
         xp = self.xp
         for it in range(n_iter):
-            # --- 各データ点ごとの G2->G3 更新 ---
-            for d in self.ptycho._diff_data:
-                # Object -> Probe
-                msg_obj_to_data = self.obj_node.send_msg_to_data(d)
-                msg_after_probe = self.probe.forward(msg_obj_to_data)
+            for diff in self.ptycho._diff_data:
+                # Expectation propagation
+                self.obj_node.forward(diff)
+                probe = self.obj_node.probe_registry[diff]
+                probe.forward()
+                probe.child.forward()
+                probe.child.denoiser.backward()
+                probe.child.backward()
+                probe.backward()
+                self.obj_node.backward(diff)
 
-                # FFT forward
-                ch = self.fft_channels[d]
-                ch.receive_msg_from_input(msg_after_probe)
-                msg_to_output = ch.forward()
-
-                # Output denoiser
-                out = self.output_nodes[d]
-                out.receive_msg(msg_to_output)
-                msg_from_output = out.forward_msg()
-
-                # FFT backward
-                ch.receive_msg_from_output(msg_from_output)
-                msg_back_fft = ch.backward()
-
-                # Probe backward
-                msg_back_probe = self.probe.backward(msg_back_fft)
-
-                # Object受信
-                self.obj_node.receive_msg_from_data(d, msg_back_probe)
-
-            # --- G1更新（Prior） ---
+            # Update prior (if applicable)
             if self.prior is not None:
                 self.prior.receive_msg(self.obj_node.send_msg_to_prior())
                 msg_prior = self.prior.forward_msg()
                 self.obj_node.receive_msg_from_prior(msg_prior)
 
-            # --- callback ---
+            # Optional callback
             if self.callback:
-                mean_err = xp.mean([out.error for out in self.output_nodes.values()])
+                mean_err = xp.mean(xp.array([p.child.denoiser.error for p in self.obj_node.probe_registry.values()]))
                 self.callback(it, float(mean_err), self.obj_node.get_belief().mean)
 
-        return self.obj_node.get_belief().mean, self.probe.data
+        return self.obj_node.get_belief().mean, self.obj_node.probe_registry[diff].data

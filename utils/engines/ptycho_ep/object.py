@@ -1,74 +1,223 @@
+from __future__ import annotations
 from .accumulative_uncertain_array import AccumulativeUncertainArray as AUA
 from .uncertain_array import UncertainArray as UA
 from ...backend import np
-from ...ptycho.data import DiffractionData  # 実際のインポートパスに応じて調整
+from ...rng_utils import get_rng, normal
+from ...ptycho.data import DiffractionData
+from .probe import Probe
+from .denoiser import BaseDenoiser, PROutputDenoiser
 
 
 class Object:
-    def __init__(self, shape, rng, dtype=np().complex64, init_ua: UA | None = None):
+    """
+    Object node in the EP-based ptychography graph.
+
+    This class maintains the global estimate of the object as an 
+    AccumulativeUncertainArray (AUA), tracks messages exchanged 
+    with data nodes (via probes), and holds references to all 
+    associated probe, channel, and denoiser objects.
+
+    Attributes
+    ----------
+    shape : tuple
+        Shape of the object image (typically square: H x W).
+    dtype : np.dtype
+        Data type of the internal arrays (usually np.complex64).
+    rng : Generator
+        Random number generator used for initializations.
+    object_init : np.ndarray
+        Initial complex-valued guess of the object. (randomly initialized if not given)
+    probe_init : np.ndarray
+        Initial complex-valued probe used for each measurement. 
+    belief : AccumulativeUncertainArray
+        Accumulated posterior (product form) of all incoming messages.
+    msg_from_prior : UncertainArray
+        Message from the prior node (can be zero or identity if not used).
+    msg_from_data : dict[DiffractionData, UncertainArray]
+        Messages from each data node (i.e., from probes via FFT → output).
+    data_registry : dict[DiffractionData, tuple[slice, slice]]
+        Patch location of each DiffractionData relative to the object image.
+    probe_registry : dict[DiffractionData, Probe]
+        Mapping from each DiffractionData to its associated Probe object.
+    """
+
+    def __init__(self, shape, rng, initial_probe: np().ndarray,
+                 dtype=np().complex64, initial_object: np().ndarray | None = None):
+        # Basic attributes
         self.shape = shape
         self.dtype = dtype
+
+        # Random initialization
+        self.rng = rng if rng is not None else get_rng()
+        self.object_init = initial_object if initial_object is not None else normal(rng=self.rng, size=self.shape)
+        self.probe_init = initial_probe
+
+        # Belief and messages
         self.belief = AUA(shape=shape, dtype=dtype)
-        self.rng = rng
-
-        # ★ 全域の初期UA（未指定ならランダムで生成）
-        #   空間的に相関のある“共通の場”から、各パッチの初期メッセージを切り出す
-        self.init_ua: UA = init_ua if init_ua is not None \
-            else UA.normal(shape=shape, rng=self.rng, scalar_precision=False)
-
         self.msg_from_prior: UA = UA.zeros(shape=shape, scalar_precision=False)
         self.msg_from_data: dict[DiffractionData, UA] = {}
+
+        # Pointers to external components
         self.data_registry: dict[DiffractionData, tuple[slice, slice]] = {}
+        self.probe_registry: dict[DiffractionData, Probe] = {}
+        self.prior: BaseDenoiser | None = None
 
-    def register_data(self, data: DiffractionData, probe: np().ndarray | None = None,
-                      precision_floor: float = 0.0):
-        if data.indices is None:
-            raise ValueError(f"indices not set for data at position {data.position}")
-        self.data_registry[data] = data.indices
+    def register_data(self, diff: DiffractionData):
+        """
+        Register a new diffraction data object to the object node.
 
-        # ★ 全域 init_ua から該当パッチを切り出す
-        ua0 = self.init_ua[data.indices]   # UA を返す（__getitem__）
+        This initializes:
+        - The slice index mapping from object to this data.
+        - A corresponding message from object to data.
+        - A probe object associated with this data point.
 
-        # （任意）プローブで重み付けしたい場合：scaled を併用
-        if probe is not None:
-            # mean × probe, precision × |probe|^2（ゼロ強度は floor に）
-            ua0 = ua0.scaled(probe, precision_floor=precision_floor)
+        Parameters
+        ----------
+        data : DiffractionData
+            The measurement node to associate.
+        """
+        if diff.indices is None:
+            raise ValueError(f"indices not set for data at position {diff.position}")
 
-        self.msg_from_data[data] = ua0
-        self.belief.add(ua0, data.indices)
+        # Register slice location
+        self.data_registry[diff] = diff.indices
 
-    def receive_msg_from_data(self, data: DiffractionData, msg: UA):
-        indices = self.data_registry.get(data)
-        if indices is None:
-            raise ValueError("Data not registered to object")
+        # Create and register corresponding Probe
+        prb = Probe(data = self.probe_init, parent = self, diffraction = diff)
+        self.probe_registry[diff] = prb
 
-        prev_msg = self.msg_from_data.get(data)
-        if prev_msg is not None:
-            self.belief.subtract(prev_msg, indices)
-        self.belief.add(msg, indices)
-        self.msg_from_data[data] = msg
+        # Initialize message and belief update
+        init_msg = UA(mean=self.object_init[diff.indices]).to_array_precision()
+        self.msg_from_data[diff] = init_msg
+        self.belief.add(init_msg, diff.indices)
 
-    def receive_msg_from_prior(self, msg: UA):
-        self.belief.subtract(self.msg_from_prior)
-        self.belief.add(msg)
-        self.msg_from_prior = msg
+    
+    def forward(self, data: DiffractionData) -> None:
+        """
+        Send a forward message from the object to the associated probe.
+
+        This method extracts the relevant patch of the current belief (UA) 
+        corresponding to the specified diffraction data, and sets it as the 
+        input belief for the associated probe.
+
+        Parameters
+        ----------
+        data : DiffractionData
+            The data point whose corresponding probe should receive the message.
+
+        Raises
+        ------
+        KeyError if the given data is not registered to the object.
+        """
+
+        ua_to_probe = self.get_patch_ua(data)
+        prb = self.probe_registry[data]
+        prb.input_belief = ua_to_probe
+
 
     def get_patch_ua(self, data: DiffractionData) -> UA:
+        """
+        Extract the belief patch corresponding to a specific data point.
+
+        Returns the local UncertainArray slice of the object's belief 
+        that corresponds to the patch indexed by the given data.
+
+        Parameters
+        ----------
+        data : DiffractionData
+            The data node whose patch should be extracted.
+
+        Returns
+        -------
+        UA : UncertainArray
+            The patch of the current belief corresponding to the data's slice.
+
+        Raises
+        ------
+        ValueError if the given data is not registered to the object.
+        """
         indices = self.data_registry.get(data)
         if indices is None:
             raise ValueError("Data not registered to object")
         return self.belief.get_ua(indices)
     
-    def send_msg_to_data(self, data: DiffractionData) -> UA:
-        belief_patch = self.get_patch_ua(data)
-        incoming_msg = self.msg_from_data[data]
-        msg_to_send = belief_patch/incoming_msg
-        return msg_to_send
+    def backward(self, data: DiffractionData) -> None:
+        """
+        Receive a backward message from the associated probe and update the object's belief.
+
+        This method updates the object's accumulated belief by first subtracting the old
+        message (from data) and then adding the new message obtained from the probe.
+
+        Parameters
+        ----------
+        data : DiffractionData
+            The data node whose associated probe has computed a new backward message.
+
+        Raises
+        ------
+        KeyError if the given data is not registered or missing in msg_from_data.
+        """
+        # new and old msg_from_data
+        prb = self.probe_registry[data]
+        new_msg = prb.msg_to_object
+        old_msg = self.msg_from_data[data]
+
+        # update belief and msg_from_data
+        indices = self.data_registry[data]
+        self.belief.subtract(old_msg, indices)
+        self.belief.add(new_msg, indices)
+        self.msg_from_data[data] = new_msg
+
+
+    def receive_msg_from_prior(self, msg: UA):
+        """
+        Receive a message from the prior denoiser and update the object's belief.
+
+        This subtracts the previous prior message from the belief, then adds the new one,
+        effectively replacing the contribution of the prior.
+
+        Parameters
+        ----------
+        msg : UncertainArray
+            The new message from the prior.
+        """
+        self.belief.subtract(self.msg_from_prior)
+        self.belief.add(msg)
+        self.msg_from_prior = msg
+
 
     def send_msg_to_prior(self) -> UA:
+        """
+        Compute and return the outgoing message to the prior.
+
+        The outgoing message is computed as the ratio between the object's current
+        belief and the last prior message. This is used by the prior node to update itself.
+
+        Returns
+        -------
+        UncertainArray
+            The message to be sent to the prior node.
+
+        Raises
+        ------
+        RuntimeError
+            If no prior message has been set yet.
+        """
         if self.msg_from_prior is None:
             raise RuntimeError("Prior message not set.")
         return self.belief.to_ua() / self.msg_from_prior
 
+
     def get_belief(self) -> UA:
+        """
+        Return the current global belief (posterior) of the object as a UncertainArray.
+
+        This is typically used at the end of inference to extract the final estimated image.
+
+        Returns
+        -------
+        UncertainArray
+            The object's full belief over the entire field.
+        """
         return self.belief.to_ua()
+

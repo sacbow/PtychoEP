@@ -92,3 +92,52 @@ def test_copy_independence(backend):
     ua_copy = ua.copy()
     ua.mean[0, 0] = 10
     assert ua_copy.mean[0, 0] != 10
+
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_scaled(backend):
+    set_backend(backend)
+    xp = backend_np()
+    mean = xp.ones((2, 2), dtype=xp.complex64)
+    ua = UncertainArray(mean, 1.0)  # scalar precision
+
+    # Uniform gain
+    ua_scaled = ua.scaled(2.0)
+    assert ua_scaled.scalar_precision is True
+    assert xp.allclose(ua_scaled.mean, mean * 2)
+    
+    # Precision comparison (avoid cupy-to-numpy error)
+    if hasattr(ua_scaled.precision, "get"):
+        scalar_prec = ua_scaled.precision.get().item()
+    else:
+        scalar_prec = ua_scaled.precision.item()
+    assert scalar_prec == pytest.approx(0.25)
+
+    # Non-uniform gain should raise error in scalar mode
+    gain = xp.array([[1.0, 2.0], [3.0, 4.0]], dtype=xp.float32)
+    with pytest.raises(ValueError):
+        _ = ua.scaled(gain, to_array_when_nonuniform=False)
+
+    # Non-uniform gain promoted to array precision
+    ua_arr = ua.scaled(gain, to_array_when_nonuniform=True)
+    assert ua_arr.scalar_precision is False
+    expected_prec = 1/gain**2 * 1.0
+    assert xp.allclose(ua_arr.precision, expected_prec)
+
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_fft_and_ifft(backend):
+    set_backend(backend)
+    xp = backend_np()
+    mean = xp.ones((4, 4), dtype=xp.complex64)
+    ua = UncertainArray(mean, 1.0)  # scalar precision
+    from PtychoEP.utils.engines.ptycho_ep.uncertain_array import fft_ua, ifft_ua
+
+    # Forward FFT
+    ua_fft = fft_ua(ua)
+    assert ua_fft.mean.shape == ua.mean.shape
+    assert ua_fft.scalar_precision is True
+
+    # Inverse FFT
+    ua_ifft = ifft_ua(ua_fft)
+    assert ua_ifft.mean.shape == ua.mean.shape
+    assert ua_ifft.scalar_precision is True
+    assert xp.allclose(xp.abs(ua_ifft.mean), xp.abs(ua.mean), atol=1e-4)

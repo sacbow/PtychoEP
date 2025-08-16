@@ -1,45 +1,82 @@
 import pytest
+from PtychoEP.utils.backend import set_backend, np as backend_np
 from PtychoEP.utils.engines.ptycho_ep.object import Object
-from PtychoEP.utils.engines.ptycho_ep.uncertain_array import UncertainArray as UA
+from PtychoEP.utils.engines.ptycho_ep.uncertain_array import UncertainArray
+from PtychoEP.utils.engines.ptycho_ep.accumulative_uncertain_array import AccumulativeUncertainArray
 from PtychoEP.utils.ptycho.data import DiffractionData
-from PtychoEP.utils.backend import set_backend, np
-from PtychoEP.utils.rng_utils import get_rng
 
 
-@pytest.fixture(autouse=True)
-def setup_backend():
-    set_backend("numpy")
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_object_registration_and_belief(backend):
+    set_backend(backend)
+    xp = backend_np()
+    shape = (8, 8)
+    patch = (slice(2, 6), slice(2, 6))
 
-@pytest.fixture
-def dummy_data():
-    shape = (32, 32)
-    indices = (slice(10, 26), slice(10, 26))
-    diffraction = np().ones((16, 16), dtype=np().complex64)
-    return DiffractionData(position=(0, 0), diffraction=diffraction, indices=indices)
+    obj_init = xp.ones(shape, dtype=xp.complex64)
+    prb_init = xp.ones((4, 4), dtype=xp.complex64)
 
-def test_register_and_receive(dummy_data):
-    obj = Object(shape=(32, 32), rng=get_rng())
+    obj = Object(shape=shape, rng=None, initial_probe=prb_init, initial_object=obj_init)
+
+    dummy_data = DiffractionData(diffraction=xp.ones((4, 4)), position=(4, 4))
+    dummy_data.indices = patch
+
     obj.register_data(dummy_data)
-    
-    assert dummy_data in obj.msg_from_data
+
     assert dummy_data in obj.data_registry
+    assert dummy_data in obj.probe_registry
+    assert dummy_data in obj.msg_from_data
 
-    # make dummy message and apply
-    msg = UA.normal(shape=(16, 16), rng=get_rng())
-    obj.receive_msg_from_data(dummy_data, msg)
-    patch = obj.get_patch_ua(dummy_data)
-
-    # patch should be close to msg (since belief = only msg)
-    assert np().allclose(patch.mean, msg.mean/2., atol=1e-5)
-    assert np().allclose(patch.precision, msg.precision + 1, atol=1e-5)
-
-def test_send_msg_to_prior(dummy_data):
-    obj = Object(shape=(32, 32), rng=get_rng())
-    obj.register_data(dummy_data)
-    obj.receive_msg_from_prior(UA.zeros((32, 32), scalar_precision = False))
-
-    output_msg = obj.send_msg_to_prior()
     belief = obj.get_belief()
+    assert isinstance(belief, UncertainArray)
+    assert belief.mean.shape == shape
+    assert not belief.scalar_precision
 
-    # send_msg_to_prior = belief / prior → should recover belief if prior=1
-    assert np().allclose(output_msg.mean[0:5,0:5], belief.mean[0:5,0:5])
+
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_object_forward_backward_cycle(backend):
+    set_backend(backend)
+    xp = backend_np()
+    shape = (8, 8)
+    patch = (slice(2, 6), slice(2, 6))
+
+    obj = Object(shape=shape, rng=None, initial_probe=xp.ones((4, 4)), initial_object=xp.ones(shape, dtype=xp.complex64))
+    data = DiffractionData(diffraction=xp.ones((4, 4)), position=(4, 4))
+    data.indices = patch
+    obj.register_data(data)
+
+    # Forward should update probe.input_belief
+    obj.forward(data)
+    prb = obj.probe_registry[data]
+    assert isinstance(prb.input_belief, UncertainArray)
+
+    # Manually simulate backward msg from probe
+    prb.msg_to_object = prb.input_belief.scaled(2.0)
+    old_msg = obj.msg_from_data[data].mean.copy()
+
+    # Backward updates belief and message
+    obj.backward(data)
+    new_msg = obj.msg_from_data[data]
+    assert xp.allclose(new_msg.mean, old_msg)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_object_prior_message_handling(backend):
+    set_backend(backend)
+    xp = backend_np()
+    shape = (6, 6)
+    obj = Object(shape=shape, rng=None, initial_probe=xp.ones((4, 4)))
+
+    prior_msg = UncertainArray(xp.ones(shape, dtype=xp.complex64), 2.0).to_array_precision()
+    obj.receive_msg_from_prior(prior_msg)
+
+    # Check belief has been updated
+    belief = obj.get_belief()
+    assert isinstance(belief, UncertainArray)
+    assert not belief.scalar_precision
+    assert xp.allclose(obj.msg_from_prior.mean, 1.0)
+
+    # send_msg_to_prior returns division of belief by prior
+    msg = obj.send_msg_to_prior()
+    assert isinstance(msg, UncertainArray)
+    assert msg.shape == shape

@@ -1,55 +1,54 @@
-# test/test_probe.py
 import pytest
 from PtychoEP.utils.backend import set_backend, np as backend_np
-from PtychoEP.utils.engines.ptycho_ep.uncertain_array import UncertainArray as UA
+from PtychoEP.utils.engines.ptycho_ep.uncertain_array import UncertainArray
 from PtychoEP.utils.engines.ptycho_ep.probe import Probe
-from PtychoEP.utils.rng_utils import get_rng
+from PtychoEP.utils.ptycho.data import DiffractionData
 
-@pytest.fixture(autouse=True, params=["numpy", "cupy"])
-def setup_backend(request):
-    set_backend(request.param)
 
-def test_forward_backward_consistency():
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_probe_init_and_set_data(backend):
+    set_backend(backend)
     xp = backend_np()
-    rng = get_rng()
-    shape = (8, 8)
+    shape = (4, 4)
+    data = xp.ones(shape, dtype=xp.complex64)
 
-    # ランダムなProbeデータ（ゼロ除算回避のため非ゼロ）
-    probe_data = xp.random.rand(*shape) + 1j * xp.random.rand(*shape)
-    probe_data = probe_data.astype(xp.complex64) + 0.1
+    prb = Probe(data)
+    assert prb.data.shape == shape
+    assert prb.abs2.shape == shape
+    assert xp.all(prb.abs2 > 0)
+    assert prb.data_inv.shape == shape
+    assert prb.child is not None
+    assert prb.child.probe is prb
 
-    probe = Probe(probe_data)
 
-    # ランダムUA
-    ua_in = UA.normal(shape=shape, rng=rng)
-
-    # forward → backward がほぼ ua_in に戻るか
-    ua_fwd = probe.forward(ua_in)
-    ua_back = probe.backward(ua_fwd)
-
-    assert xp.allclose(ua_back.mean, ua_in.mean, atol=1e-6)
-    assert xp.allclose(ua_back.precision, ua_in.precision, atol=1e-6)
-
-def test_set_data_and_shape_check():
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_probe_forward_and_backward(backend):
+    set_backend(backend)
     xp = backend_np()
-    probe = Probe()
 
-    # 正しい2DデータはOK
-    data = xp.ones((4, 4), dtype=xp.complex64)
-    probe.set_data(data)
-    assert probe.data.shape == (4, 4)
+    probe_data = xp.ones((4, 4), dtype=xp.complex64)
+    input_mean = xp.ones((4, 4), dtype=xp.complex64)
+    input_prec = xp.ones((4, 4), dtype=xp.float32)
 
-    # 1Dデータはエラー
-    with pytest.raises(ValueError):
-        probe.set_data(xp.ones((4,), dtype=xp.complex64))
+    # Create probe
+    probe = Probe(data=probe_data)
+    probe.input_belief = UncertainArray(mean=input_mean, precision=input_prec)
 
-def test_shape_mismatch_raises():
-    xp = backend_np()
-    probe = Probe(xp.ones((4, 4), dtype=xp.complex64))
-    ua_wrong_shape = UA.normal(shape=(3, 3), rng=get_rng())
+    # Simulate forward pass
+    probe.forward()
+    fft_in = probe.child.input_belief
 
-    with pytest.raises(ValueError):
-        probe.forward(ua_wrong_shape)
+    # Check forward scaled result
+    assert xp.allclose(fft_in.mean, input_mean * probe_data)
+    expected_prec_forward = input_prec / xp.abs(probe_data)**2
+    assert xp.allclose(fft_in.precision, expected_prec_forward.astype(xp.float32))
 
-    with pytest.raises(ValueError):
-        probe.backward(ua_wrong_shape)
+    # Simulate FFT output -> msg_to_probe
+    probe.child.msg_to_probe = fft_in  # normally set by FFTChannel.backward()
+    probe.backward()
+
+    # Check backward scaled result
+    back_msg = probe.msg_to_object
+    assert xp.allclose(back_msg.mean, fft_in.mean * probe.data_inv)
+    expected_prec_back = fft_in.precision / xp.abs(probe.data_inv)**2
+    assert xp.allclose(back_msg.precision, expected_prec_back.astype(xp.float32))

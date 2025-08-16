@@ -1,53 +1,108 @@
 import pytest
-from PtychoEP.utils.engines.ptycho_ep.uncertain_array import UncertainArray as UA, fft_ua, ifft_ua
-from PtychoEP.utils.engines.ptycho_ep.fft_channel import FFTChannel
 from PtychoEP.utils.backend import set_backend, np as backend_np
-from PtychoEP.utils.rng_utils import get_rng
+from PtychoEP.utils.engines.ptycho_ep.fft_channel import FFTChannel
+from PtychoEP.utils.engines.ptycho_ep.uncertain_array import UncertainArray
+from PtychoEP.utils.engines.ptycho_ep.probe import Probe
+from PtychoEP.utils.ptycho.data import DiffractionData
 
-@pytest.fixture(autouse=True, params=["numpy", "cupy"])
-def setup_backend(request):
-    set_backend(request.param)
 
-def test_fft_channel_forward_and_backward_consistency():
-    rng_init = get_rng()
-    shape = (16, 16)
-    rng = get_rng()
-    input_msg = UA.normal(shape=shape, rng=rng, scalar_precision = False)
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_fft_channel_initialization(backend):
+    set_backend(backend)
+    xp = backend_np()
 
-    channel = FFTChannel(rng = rng_init)
-    channel.receive_msg_from_input(input_msg)
+    obj_init = xp.ones((8, 8), dtype=xp.complex64)
+    probe_data = xp.ones((4, 4), dtype=xp.complex64)
+    patch = (slice(2, 6), slice(2, 6))
 
-    # 出力メッセージをランダムに用意してbackward側に与える
-    dummy_output_msg = UA.normal(shape=shape, rng=rng, scalar_precision = True)
-    channel.receive_msg_from_output(dummy_output_msg)
+    class DummyObject:
+        def __init__(self):
+            self.object_init = obj_init
 
-    # backwardでObjectへのメッセージを生成
-    back_msg = channel.backward()
-    assert isinstance(back_msg, UA)
-    assert back_msg.mean.shape == shape
-    assert back_msg.precision.shape == () or back_msg.scalar_precision
+    diff = DiffractionData(diffraction=xp.ones((4, 4)), position=(4, 4))
+    diff.indices = patch
 
-    # forwardでもう一度伝搬（belief/output_msgがセットされている）
-    fwd_msg = channel.forward()
-    assert isinstance(fwd_msg, UA)
-    assert fwd_msg.mean.shape == shape
+    probe = Probe(data=probe_data, parent=DummyObject(), diffraction=diff)
+    fft_ch = FFTChannel(parent_probe=probe, diff=diff)
 
-def test_forward_before_backward_returns_random():
-    rng_init = get_rng()
-    shape = (8, 8)
-    rng = get_rng()
-    input_msg = UA.normal(shape=shape, rng=rng)
+    # Check that msg_from_denoiser is initialized
+    assert isinstance(fft_ch.msg_from_denoiser, UncertainArray)
+    assert fft_ch.msg_from_denoiser.scalar_precision
 
-    channel = FFTChannel(rng_init)
-    channel.receive_msg_from_input(input_msg)
 
-    # backwardが行われていない状態では、forwardはランダムなUAを返す
-    out = channel.forward()
-    assert isinstance(out, UA)
-    assert out.mean.shape == shape
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_fft_channel_forward(backend):
+    set_backend(backend)
+    xp = backend_np()
 
-def test_backward_without_inputs_raises():
-    rng_init = get_rng()
-    channel = FFTChannel(rng_init)
+    shape = (4, 4)
+    probe_data = xp.ones(shape, dtype=xp.complex64)
+
+    class DummyObject:
+        def __init__(self):
+            self.object_init = xp.ones((8, 8), dtype=xp.complex64)
+
+    class DummyDenoiser:
+        def __init__(self):
+            self.msg_from_fft = None
+
+    diff = DiffractionData(diffraction=xp.ones(shape), position=(4, 4))
+    diff.indices = (slice(2, 6), slice(2, 6))
+
+    probe = Probe(data=probe_data, parent=DummyObject(), diffraction=diff)
+    fft_ch = FFTChannel(parent_probe=probe, diff=diff)
+    fft_ch.denoiser = DummyDenoiser()
+
+    ua = UncertainArray(xp.ones(shape, dtype=xp.complex64), precision=1.0)
+    fft_ch.input_belief = ua
+
+    fft_ch.forward()
+    assert isinstance(fft_ch.denoiser.msg_from_fft, UncertainArray)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_fft_channel_backward(backend):
+    set_backend(backend)
+    xp = backend_np()
+
+    shape = (4, 4)
+
+    class DummyObject:
+        def __init__(self):
+            self.object_init = xp.ones((8, 8), dtype=xp.complex64)
+
+    diff = DiffractionData(diffraction=xp.ones(shape), position=(4, 4))
+    diff.indices = (slice(2, 6), slice(2, 6))
+
+    probe = Probe(data=xp.ones(shape, dtype=xp.complex64), parent=DummyObject(), diffraction=diff)
+    fft_ch = FFTChannel(parent_probe=probe, diff=diff)
+
+    fft_ch.msg_from_denoiser = UncertainArray(xp.ones(shape, dtype=xp.complex64), precision=1.0)
+    fft_ch.backward()
+
+    assert isinstance(fft_ch.msg_to_probe, UncertainArray)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_fft_channel_missing_inputs(backend):
+    set_backend(backend)
+    xp = backend_np()
+
+    class DummyObject:
+        def __init__(self):
+            self.object_init = xp.ones((8, 8), dtype=xp.complex64)
+
+    diff = DiffractionData(diffraction=xp.ones((4, 4)), position=(4, 4))
+    diff.indices = (slice(2, 6), slice(2, 6))
+
+    probe = Probe(data=xp.ones((4, 4), dtype=xp.complex64), parent=DummyObject(), diffraction=diff)
+    fft_ch = FFTChannel(parent_probe=probe, diff=diff)
+
+    # input_belief not set → forward should fail
     with pytest.raises(RuntimeError):
-        channel.backward()
+        fft_ch.forward()
+
+    # msg_from_denoiser not set → backward should fail
+    fft_ch.msg_from_denoiser = None
+    with pytest.raises(RuntimeError):
+        fft_ch.backward()

@@ -4,7 +4,8 @@ from ...rng_utils import normal
 
 class UncertainArray:
     """
-    ガウス変数 (複素/実) の期待値と逆分散(precision)をまとめて管理するクラス。
+    A container class representing a (possibly complex) Gaussian variable
+    using its mean and precision (inverse variance).
     """
     def __init__(self, mean: np().ndarray, precision: np().ndarray = 1.0, dtype = np().complex64):
         self.mean = np().asarray(mean, dtype = dtype)
@@ -38,7 +39,7 @@ class UncertainArray:
         return UncertainArray(self.mean.copy(), self.precision.copy(), dtype=self.dtype)
 
     def to_tuple(self):
-        """(mean, precision) タプルで返す（既存のMessagePassing互換）"""
+        """Return the (mean, precision) pair as a tuple (compatible with legacy message passing)."""
         return self.mean, self.precision
     
     def __mul__(self, other : UncertainArray):
@@ -59,8 +60,10 @@ class UncertainArray:
     
     def to_scalar_precision(self) -> UncertainArray:
         """
-        precisionをスカラー化する。
-        precision (逆分散) を分散に変換し平均を取り、その逆数を返すことで調和平均を実現。
+        Convert the current precision into a scalar precision.
+
+        The new precision is computed as the harmonic mean of variances
+        (i.e., inverse of precision), then inverted to get scalar precision.
         """
         if self.scalar_precision:
             return self
@@ -72,8 +75,10 @@ class UncertainArray:
 
     def to_array_precision(self) -> UncertainArray:
         """
-        precisionを配列化する。
-        scalar_precision=Trueのとき、mean.shapeと同じ配列precisionにブロードキャスト。
+        Convert the current precision into array precision.
+
+        If scalar_precision=True, broadcast the scalar precision into an array
+        matching the shape of mean.
         """
         if not self.scalar_precision:
             return self
@@ -81,18 +86,17 @@ class UncertainArray:
         return UncertainArray(self.mean.copy(), precision=array_precision, dtype=self.dtype)
     
     def slice(self, indices: tuple[slice, slice]) -> "UncertainArray":
-        """(slice, slice) でパッチを切り出した UA を返す。"""
+        """Extract a patch UA using a (slice, slice) index."""
         y, x = indices
         mean_sub = self.mean[y, x]
         if self.scalar_precision:
-            prec_sub = self.precision            # スカラーはそのまま
+            prec_sub = self.precision           
         else:
             prec_sub = self.precision[y, x]
         return UncertainArray(mean=mean_sub, precision=prec_sub, dtype=self.dtype)
 
-    # シンタックスシュガー: ua[yy, xx] で UA が返る
+
     def __getitem__(self, key) -> "UncertainArray":
-        # key は (slice, slice) を想定。必要に応じて None 全域などの扱いを追加。
         if isinstance(key, tuple) and len(key) == 2 \
            and isinstance(key[0], slice) and isinstance(key[1], slice):
             return self.slice(key)
@@ -100,12 +104,15 @@ class UncertainArray:
     
     def damp_with(self, other: UncertainArray, damping: float) -> UncertainArray:
         """
-        自身(self)をraw、otherをoldとしてdampingを適用する。
-        r_new = damping * r_raw + (1-damping) * r_old
+        Apply damping between the current UA (raw) and another UA (previous).
+
+        r_new = damping * r_raw + (1 - damping) * r_old
         gamma_new = 1 / (damping/sqrt(gamma_raw) + (1-damping)/sqrt(gamma_old))^2
+
+        Requires both UAs to have the same precision type (scalar/array).
         """
         if self.scalar_precision != other.scalar_precision:
-            raise ValueError("dampingには同じprecisionタイプ（scalar/array）のUAが必要です")
+            raise ValueError("UA.damp_with : uncompatible precision type")
 
         mean_damped = damping * self.mean + (1 - damping) * other.mean
         gamma_damped = 1.0 / (
@@ -114,17 +121,22 @@ class UncertainArray:
 
         return UncertainArray(mean=mean_damped, precision=gamma_damped, dtype=self.dtype)
     
-    def scaled(self, gain, *, to_array_when_nonuniform: bool = True, precision_floor: float = 0.0):
+    def scaled(self, gain, to_array_when_nonuniform: bool = True, precision_floor: float = 0.0):
         """
-        UA を複素ゲイン gain で画素毎にスケーリングする。
-        mean'      = gain * mean
-        precision' = |gain|^2 * precision
-        gain: スカラー or ndarray（mean とブロードキャスト可能）
-        to_array_when_nonuniform:
-            True  : self.precision がスカラーで gain が非一様なら array-precision に昇格
-            False : たとえ非一様でもスカラーのままにしたい（特殊用途）
-        precision_floor:
-            数値安定用の下限（0.0 推奨。>0 にするとゼロ強度画素にも微小情報を残す）
+        Scale the UA by a complex gain elementwise.
+
+        Updates mean and precision as:
+            mean'      = gain * mean
+            precision' = |gain|^2 * precision
+
+        Parameters
+        ----------
+        gain : scalar or ndarray
+            Broadcastable gain factor.
+        to_array_when_nonuniform : bool
+            If True and gain is non-uniform, scalar precision is promoted to array precision.
+        precision_floor : float
+            Minimum precision threshold to avoid numerical instability.
         """
         xp = np()
         g = xp.asarray(gain)
@@ -133,27 +145,26 @@ class UncertainArray:
         new_mean = g * self.mean
 
         if xp.isscalar(g) or g.shape == () or (g_abs2 == g_abs2.flat[0]).all():
-            # ゲインが一様
-            new_prec = xp.maximum(self.precision * g_abs2, precision_floor)
+            # scalar gain
+            new_prec = self.precision / xp.maximum(g_abs2, precision_floor)
             return UncertainArray(mean=new_mean, precision=new_prec, dtype=self.dtype)
 
-        # ゲインが非一様
+        # array gain
         if self.scalar_precision and to_array_when_nonuniform:
             # スカラー精度 → 配列精度に昇格して各画素で重み付け
-            new_prec = xp.maximum(g_abs2.astype(xp.float32) * self.precision, precision_floor)
+            new_prec = self.precision / xp.maximum(g_abs2.astype(xp.float32) , precision_floor)
             return UncertainArray(mean=new_mean, precision=new_prec, dtype=self.dtype)
         else:
-            # もともと配列精度、またはスカラーのまま運用したい場合
-            new_prec = xp.maximum(self.precision * g_abs2.astype(xp.float32), precision_floor)
-            return UncertainArray(mean=new_mean, precision=new_prec, dtype=self.dtype)
+            raise ValueError("Cannot produce scalar-precision UA from array-gain")
 
 # --- fft utils ---
 from .uncertain_array import UncertainArray as UA
 
 def fft_ua(uarray: UA, norm="ortho") -> UA:
     """
-    UA.mean に fft2 を適用し、精度はスカラーに変換（調和平均）。
+    Apply 2D FFT to UA.mean. Converts precision to scalar using harmonic mean of variances.
     """
+
     fft_mean = np().fft.fft2(uarray.mean, norm=norm)
     if uarray.scalar_precision:
         scalar_precision = uarray.precision
@@ -165,7 +176,7 @@ def fft_ua(uarray: UA, norm="ortho") -> UA:
 
 def ifft_ua(uarray: UA, norm="ortho") -> UA:
     """
-    UA.mean に ifft2 を適用し、精度はスカラーに変換（調和平均）。
+    Apply 2D IFFT to UA.mean. Converts precision to scalar using harmonic mean of variances.
     """
     ifft_mean = np().fft.ifft2(uarray.mean, norm=norm)
     if uarray.scalar_precision:

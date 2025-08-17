@@ -58,25 +58,3 @@ def test_object_forward_backward_cycle(backend):
     obj.backward(data)
     new_msg = obj.msg_from_data[data]
     assert xp.allclose(new_msg.mean, old_msg)
-
-
-@pytest.mark.parametrize("backend", ["numpy", "cupy"])
-def test_object_prior_message_handling(backend):
-    set_backend(backend)
-    xp = backend_np()
-    shape = (6, 6)
-    obj = Object(shape=shape, rng=None, initial_probe=xp.ones((4, 4)))
-
-    prior_msg = UncertainArray(xp.ones(shape, dtype=xp.complex64), 2.0).to_array_precision()
-    obj.receive_msg_from_prior(prior_msg)
-
-    # Check belief has been updated
-    belief = obj.get_belief()
-    assert isinstance(belief, UncertainArray)
-    assert not belief.scalar_precision
-    assert xp.allclose(obj.msg_from_prior.mean, 1.0)
-
-    # send_msg_to_prior returns division of belief by prior
-    msg = obj.send_msg_to_prior()
-    assert isinstance(msg, UncertainArray)
-    assert msg.shape == shape

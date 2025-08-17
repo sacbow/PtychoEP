@@ -25,7 +25,7 @@ class Denoiser:
             The parent FFTChannel this denoiser is linked to.
         """
         self.diff = diff
-        self.damping = 0.9
+        self.damping = 1.0
         self.parent = parent
 
         self.y = diff.diffraction  # observed amplitude (not intensity)

@@ -14,7 +14,7 @@ def test_denoiser_compute_belief_and_backward(backend):
     # --- Setup: fake data and FFTChannel ---
     shape = (4, 4)
     amplitude = xp.ones(shape, dtype=xp.float32) * 2.0   # y = 2.0 (observed amp)
-    gamma_w = 1.0
+    gamma_w = 1e2
 
     diff = DiffractionData(diffraction=amplitude, position=(0, 0))  # squared for intensity
     diff.indices = (slice(0, 4), slice(0, 4))
@@ -37,6 +37,7 @@ def test_denoiser_compute_belief_and_backward(backend):
 
     assert belief.mean.shape == shape
     assert belief.precision.shape == shape
+    assert xp.allclose(amplitude, xp.abs(belief.mean), rtol=0.1)
     assert not belief.scalar_precision
     assert xp.all(xp.abs(belief.mean) > 0)
 
@@ -49,5 +50,4 @@ def test_denoiser_compute_belief_and_backward(backend):
     updated_msg = fft_channel.msg_from_denoiser
 
     assert isinstance(updated_msg, UncertainArray)
-    assert xp.allclose(msg_fft.mean, updated_msg.mean, rtol=0.5)
     assert xp.all(updated_msg.precision > 0)

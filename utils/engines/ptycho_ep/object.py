@@ -114,12 +114,6 @@ class Object:
         ------
         KeyError if the given data is not registered to the object.
         """
-        if self.prior:
-            old_msg = self.msg_from_prior
-            new_msg = self.prior.msg_to_object
-            self.belief.subtract(old_msg)
-            self.belief.add(new_msg)
-            self.msg_from_prior = new_msg
 
         ua_to_probe = self.get_patch_ua(data)
         prb = self.probe_registry[data]
@@ -178,51 +172,6 @@ class Object:
         self.belief.subtract(old_msg, indices)
         self.belief.add(new_msg, indices)
         self.msg_from_data[data] = new_msg
-
-        #send msg to prior if necessary
-        if self.prior:
-            msg_to_prior = self.belief.to_ua() / self.msg_from_prior
-            self.prior.msg_from_object = msg_to_prior
-
-
-    def receive_msg_from_prior(self, msg: UA):
-        """
-        Receive a message from the prior denoiser and update the object's belief.
-
-        This subtracts the previous prior message from the belief, then adds the new one,
-        effectively replacing the contribution of the prior.
-
-        Parameters
-        ----------
-        msg : UncertainArray
-            The new message from the prior.
-        """
-        self.belief.subtract(self.msg_from_prior)
-        self.belief.add(msg)
-        self.msg_from_prior = msg
-
-
-    def send_msg_to_prior(self) -> UA:
-        """
-        Compute and return the outgoing message to the prior.
-
-        The outgoing message is computed as the ratio between the object's current
-        belief and the last prior message. This is used by the prior node to update itself.
-
-        Returns
-        -------
-        UncertainArray
-            The message to be sent to the prior node.
-
-        Raises
-        ------
-        RuntimeError
-            If no prior message has been set yet.
-        """
-        if self.msg_from_prior is None:
-            raise RuntimeError("Prior message not set.")
-        return self.belief.to_ua() / self.msg_from_prior
-
 
     def get_belief(self) -> UA:
         """

@@ -44,11 +44,10 @@ def test_ptycho_ep_end_to_end(backend):
         callback=callback
     )
 
-    est_obj, est_prb = ep_solver.run(n_iter=1)
+    est_obj, est_obj_precision = ep_solver.run(n_iter=1)
 
     # --- Basic output checks ---
     assert est_obj.shape == obj.shape
-    assert est_prb.shape == probe.shape
     assert xp.iscomplexobj(est_obj)
-    assert xp.iscomplexobj(est_prb)
+    assert xp.isrealobj(est_obj_precision)
     assert len(errors) == 1

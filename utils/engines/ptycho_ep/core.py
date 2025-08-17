@@ -11,7 +11,7 @@ class PtychoEP:
     Expectation Propagation (EP)-based ptychographic solver.
     """
 
-    def __init__(self, ptycho, damping=0.7, seed : int | None = None, obj_init = None, prb_init=None, callback=None):
+    def __init__(self, ptycho,  damping=0.7, seed : int | None = None, obj_init = None, prb_init=None, prior_name = "gaussian", callback=None, **prior_kwargs):
         """
         Parameters
         ----------
@@ -39,6 +39,8 @@ class PtychoEP:
             initial_probe=prb_init if prb_init is not None else ptycho.prb,
             initial_object=obj_init if obj_init is not None else None
         )
+        # set prior distribution of object
+        self.obj_node.set_prior(prior_name, **prior_kwargs)
 
         # Register each diffraction data to the object
         for diff in ptycho._diff_data:
@@ -64,6 +66,8 @@ class PtychoEP:
         """
         xp = self.xp
         for it in range(n_iter):
+            if self.obj_node.prior:
+                self.obj_node.prior.forward()
             for diff in self.ptycho._diff_data:
                 # Expectation propagation
                 self.obj_node.forward(diff)
@@ -86,4 +90,4 @@ class PtychoEP:
                 mean_err = xp.mean(xp.array([p.child.denoiser.error for p in self.obj_node.probe_registry.values()]))
                 self.callback(it, float(mean_err), self.obj_node.get_belief().mean)
 
-        return self.obj_node.get_belief().mean, self.obj_node.probe_registry[diff].data
+        return self.obj_node.get_belief().mean, self.obj_node.get_belief().precision

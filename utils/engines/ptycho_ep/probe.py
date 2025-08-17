@@ -68,7 +68,7 @@ class Probe:
         self.data = arr
 
         if data_abs is None:
-            self.abs2 = xp.maximum(xp.abs(arr) ** 2, 1e-10)
+            self.abs2 = xp.maximum(xp.abs(arr) ** 2, 1e-8)
         else:
             self.abs2 = data_abs
 
@@ -94,8 +94,10 @@ class Probe:
         xp = np()
         if self.input_belief is None:
             raise RuntimeError("Probe.forward : no input belief")
-        out = self.input_belief.scaled(gain=self.data)
-        self.child.input_belief = out
+        #out = self.input_belief.scaled(gain=self.data)
+        new_mean =  self.input_belief.mean * self.data
+        new_prec = self.input_belief.precision / self.abs2
+        self.child.input_belief = UA(mean = new_mean, precision = new_prec, dtype = self.dtype)
 
 
     def backward(self) -> None:
@@ -108,4 +110,7 @@ class Probe:
         """
         xp = np()
         msg_from_fft = self.child.msg_to_probe
-        self.msg_to_object = msg_from_fft.scaled(self.data_inv)
+        #self.msg_to_object = msg_from_fft.scaled(self.data_inv)
+        new_mean = msg_from_fft.mean * self.data_inv
+        new_prec = msg_from_fft.precision * self.abs2
+        self.msg_to_object = UA(mean = new_mean, precision = new_prec, dtype = self.dtype)

@@ -121,7 +121,7 @@ class UncertainArray:
 
         return UncertainArray(mean=mean_damped, precision=gamma_damped, dtype=self.dtype)
     
-    def scaled(self, gain, to_array_when_nonuniform: bool = True, precision_floor: float = 0.0):
+    def scaled(self, gain, to_array_when_nonuniform: bool = True, precision_floor: float = 1e-8):
         """
         Scale the UA by a complex gain elementwise.
 

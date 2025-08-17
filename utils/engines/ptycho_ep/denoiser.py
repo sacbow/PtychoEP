@@ -60,18 +60,19 @@ class Denoiser:
         z0 = self.msg_from_fft.mean
         tau = self.msg_from_fft.precision
         v0 = 1.0 / tau
+        v = 1.0/self.gamma_w
 
         abs_z0 = xp.abs(z0)
-        abs_z0_safe = xp.maximum(abs_z0, 1e-12)
+        abs_z0_safe = xp.maximum(abs_z0, 1e-8)
         unit_phase = z0 / abs_z0_safe
 
         # Posterior mean (amplitude-domain Laplace approx)
-        z_hat_amp = (v0 * self.y + 2 * v0 * abs_z0_safe) / (v0 + 2 * v0)
+        z_hat_amp = (v0 * self.y + 2 * v * abs_z0_safe) / (v0 + 2 * v)
         z_hat = unit_phase * z_hat_amp
 
         # Posterior precision
-        v_hat = (v0 * (v0 * self.y + 4 * v0 * abs_z0_safe)) / (2.0 * abs_z0_safe * (v0 + 2 * v0))
-        v_hat = xp.maximum(v_hat, 1e-12)
+        v_hat = (v0 * (v0 * self.y + 4 * v * abs_z0_safe)) / (2.0 * abs_z0_safe * (v0 + 2 * v))
+        v_hat = xp.maximum(v_hat, 1e-8)
         precision = 1.0 / v_hat
 
         self.belief = UA(mean=z_hat, precision=precision, dtype=z0.dtype)

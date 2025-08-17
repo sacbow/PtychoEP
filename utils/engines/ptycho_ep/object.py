@@ -5,6 +5,7 @@ from ...backend import np
 from ...rng_utils import get_rng, normal
 from ...ptycho.data import DiffractionData
 from .probe import Probe
+from .prior import BasePrior, SparsePrior
 
 
 class Object:
@@ -51,6 +52,8 @@ class Object:
         self.object_init = initial_object if initial_object is not None else normal(rng=self.rng, size=self.shape)
         self.probe_init = initial_probe
 
+        self.prior = None
+
         # Belief and messages
         self.belief = AUA(shape=shape, dtype=dtype)
         self.msg_from_prior: UA = UA.zeros(shape=shape, scalar_precision=False)
@@ -59,6 +62,10 @@ class Object:
         # Pointers to external components
         self.data_registry: dict[DiffractionData, tuple[slice, slice]] = {}
         self.probe_registry: dict[DiffractionData, Probe] = {}
+    
+    def set_prior(self, prior_name = "gaussian", **prior_kwarg):
+        if prior_name == "sparse":
+            self.prior = SparsePrior(self, prior_kwarg)
 
     def register_data(self, diff: DiffractionData):
         """
@@ -107,6 +114,12 @@ class Object:
         ------
         KeyError if the given data is not registered to the object.
         """
+        if self.prior:
+            old_msg = self.msg_from_prior
+            new_msg = self.prior.msg_to_object
+            self.belief.subtract(old_msg)
+            self.belief.add(new_msg)
+            self.msg_from_prior = new_msg
 
         ua_to_probe = self.get_patch_ua(data)
         prb = self.probe_registry[data]
@@ -165,6 +178,11 @@ class Object:
         self.belief.subtract(old_msg, indices)
         self.belief.add(new_msg, indices)
         self.msg_from_data[data] = new_msg
+
+        #send msg to prior if necessary
+        if self.prior:
+            msg_to_prior = self.belief.to_ua() / self.msg_from_prior
+            self.prior.msg_from_object = msg_to_prior
 
 
     def receive_msg_from_prior(self, msg: UA):

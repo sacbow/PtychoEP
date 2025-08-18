@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
-from PtychoEP.utils.ptycho.forward import generate_diffraction
-from PtychoEP.utils.ptycho.core import Ptycho
-from PtychoEP.utils.ptycho.data import DiffractionData
-from PtychoEP.utils.backend import set_backend, np as backend_np
+from ptycho.forward import generate_diffraction
+from ptycho.core import Ptycho
+from ptycho.data import DiffractionData
+from backend.backend import set_backend, np as backend_np
 
 @pytest.fixture(autouse=True)
 def setup_backend():

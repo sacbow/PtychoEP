@@ -1,9 +1,9 @@
 import pytest
-from PtychoEP.utils.backend import set_backend, is_cupy, np as backend_np
-from PtychoEP.utils.ptycho.core import Ptycho
-from PtychoEP.utils.ptycho.forward import generate_diffraction
-from PtychoEP.utils.ptycho.scan_utils import generate_spiral_scan_positions
-from PtychoEP.utils.ptycho.noise import GaussianNoise, PoissonNoise
+from backend.backend import set_backend, is_cupy, np as backend_np
+from ptycho.core import Ptycho
+from ptycho.forward import generate_diffraction
+from ptycho.scan_utils import generate_spiral_scan_positions
+from ptycho.noise import GaussianNoise, PoissonNoise
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_forward_noise_integration(backend):

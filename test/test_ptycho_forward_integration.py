@@ -1,8 +1,8 @@
 import pytest
-from PtychoEP.utils.ptycho.core import Ptycho
-from PtychoEP.utils.ptycho.forward import generate_diffraction
-from PtychoEP.utils.ptycho.scan_utils import generate_spiral_scan_positions
-from PtychoEP.utils.backend import set_backend, np as backend_np
+from ptycho.core import Ptycho
+from ptycho.forward import generate_diffraction
+from ptycho.scan_utils import generate_spiral_scan_positions
+from backend.backend import set_backend, np as backend_np
 
 @pytest.fixture(autouse=True)
 def setup_backend():

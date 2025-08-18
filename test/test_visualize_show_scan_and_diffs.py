@@ -3,10 +3,10 @@ import matplotlib
 matplotlib.use("Agg")  # GUI不要のバックエンド
 import matplotlib.pyplot as plt
 
-from PtychoEP.utils.backend import set_backend, np as backend_np
-from PtychoEP.utils.ptycho.core import Ptycho
-from PtychoEP.utils.ptycho.forward import generate_diffraction
-from PtychoEP.utils.ptycho.visualize import show_scan_and_diffs
+from backend.backend import set_backend, np as backend_np
+from ptycho.core import Ptycho
+from ptycho.forward import generate_diffraction
+from ptycho.visualize import show_scan_and_diffs
 
 @pytest.fixture(autouse=True)
 def setup_backend():

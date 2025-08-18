@@ -1,9 +1,9 @@
 import pytest
-from PtychoEP.utils.backend import set_backend, np as backend_np
-from PtychoEP.utils.engines.ptycho_ep.uncertain_array import UncertainArray
-from PtychoEP.utils.engines.ptycho_ep.denoiser import Denoiser
-from PtychoEP.utils.engines.ptycho_ep.fft_channel import FFTChannel
-from PtychoEP.utils.ptycho.data import DiffractionData
+from backend.backend import set_backend, np as backend_np
+from ptychoep.uncertain_array import UncertainArray
+from ptychoep.denoiser import Denoiser
+from ptychoep.fft_channel import FFTChannel
+from ptycho.data import DiffractionData
 
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])

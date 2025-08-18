@@ -1,7 +1,7 @@
 import pytest
-from PtychoEP.utils.backend import set_backend, np as backend_np
-from PtychoEP.utils.engines.ptycho_ep.uncertain_array import UncertainArray
-from PtychoEP.utils.engines.ptycho_ep.accumulative_uncertain_array import AccumulativeUncertainArray
+from backend.backend import set_backend, np as backend_np
+from ptychoep.uncertain_array import UncertainArray
+from ptychoep.accumulative_uncertain_array import AccumulativeUncertainArray
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_add_and_get_ua(backend):

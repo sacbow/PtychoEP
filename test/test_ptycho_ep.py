@@ -1,10 +1,10 @@
 import pytest
-from PtychoEP.utils.backend import set_backend, np as backend_np
-from PtychoEP.utils.ptycho.core import Ptycho
-from PtychoEP.utils.io_utils import load_data_image
-from PtychoEP.utils.ptycho.aperture_utils import circular_aperture
-from PtychoEP.utils.ptycho.scan_utils import generate_spiral_scan_positions
-from PtychoEP.utils.engines.ptycho_ep.core import PtychoEP
+from backend.backend import set_backend, np as backend_np
+from ptycho.core import Ptycho
+from utils.io_utils import load_data_image
+from ptycho.aperture_utils import circular_aperture
+from ptycho.scan_utils import generate_spiral_scan_positions
+from ptychoep.core import PtychoEP
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_ptycho_ep_end_to_end(backend):

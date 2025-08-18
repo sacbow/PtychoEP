@@ -1,7 +1,7 @@
 import os
 from skimage.io import imread
 from skimage.color import rgb2gray
-from .backend import np
+from backend.backend import np
 
 def load_image_as_array(filename: str, normalize: bool = True) -> np().ndarray:
     img = imread(filename)

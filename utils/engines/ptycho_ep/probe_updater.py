@@ -31,58 +31,51 @@ class ProbeUpdater:
         n_iter : int
             Number of EM update steps to run. The object belief is fixed during these steps.
         """
+        # --- Collect patches ---
         xp = self.xp
         full_belief = self.obj_node.belief.to_ua()
-
-        for _ in range(n_iter):
-            # --- Collect patches ---
-            O_mu_list = []
-            O_var_list = []
-            Phi_list = []
-            gamma_list = []
-
-            for diff, probe in self.obj_node.probe_registry.items():
+        O_mu_list = []
+        O_var_list = []
+        Phi_list = []
+        gamma_list = []
+        for diff, probe in self.obj_node.probe_registry.items():
                 indices = self.obj_node.data_registry[diff]
                 O_mu = full_belief.mean[indices]
                 O_var = 1.0 / full_belief.precision[indices]
-                Phi = probe.child.ifft(probe.child.msg_to_probe.mean)
+                Phi = probe.child.msg_to_probe.mean
                 gamma = probe.child.msg_from_denoiser.precision
-
                 O_mu_list.append(O_mu)
                 O_var_list.append(O_var)
                 Phi_list.append(Phi)
                 gamma_list.append(gamma)
 
-            # --- Stack into arrays ---
-            O_mu_all = xp.stack(O_mu_list, axis=0)            # (N, H, W)
-            O_var_all = xp.stack(O_var_list, axis=0)          # (N, H, W)
-            Phi_all = xp.stack(Phi_list, axis=0)              # (N, H, W)
-            gamma_all = xp.array(gamma_list).reshape(-1, 1, 1)
+        # --- Stack into arrays ---
+        O_mu_all = xp.stack(O_mu_list, axis=0)            # (N, H, W)
+        O_var_all = xp.stack(O_var_list, axis=0)          # (N, H, W)
+        Phi_all = xp.stack(Phi_list, axis=0)              # (N, H, W)
+        gamma_all = xp.array(gamma_list).reshape(-1, 1, 1)
 
+        # --- precompute constant terms ---
+        numerator_terms = xp.conj(O_mu_all) * Phi_all
+        denominator_terms = xp.abs(O_mu_all)**2 + O_var_all
+
+        for _ in range(n_iter):
             # --- EM Update of probe ---
-            P1 = xp.sum(gamma_all * xp.conj(O_mu_all) * Phi_all, axis=0)
-            P2 = xp.sum(gamma_all * (xp.abs(O_mu_all)**2 + O_var_all), axis=0)
-            P_est = P1 / (P2 + 1e-8)
-
-            # Precompute shared quantities for Probe.set_data()
-            P_abs2 = xp.maximum(xp.abs(P_est) ** 2, 1e-8)
-            P_inv = xp.conj(P_est) / P_abs2
-
-            # Assign to all probes (same pointer)
-            for probe in self.obj_node.probe_registry.values():
-                probe.set_data(P_est, data_abs=P_abs2, data_inv=P_inv)
+            P1 = xp.sum(gamma_all * numerator_terms, axis=0)
+            P2 = xp.sum(gamma_all * denominator_terms, axis=0)
+            P_est = P1 / P2
 
             # --- Adaptive EM: update precision ---
-            for i, (diff, probe) in enumerate(self.obj_node.probe_registry.items()):
-                indices = self.obj_node.data_registry[diff]
-                O_mu = full_belief.mean[indices]
-                O_var = 1.0 / full_belief.precision[indices]
+            gamma_all = 1 / xp.mean(xp.abs(Phi_all - O_mu_all * P_est)**2, axis = (1,2))
 
-                pred = probe.child.fft(P_est * O_mu)
-                F_psi = probe.child.msg_to_probe.mean
-                error = xp.abs(F_psi - pred)**2
-                var_term = xp.abs(P_est)**2 * O_var
-                gamma_new = F_psi.size / (xp.sum(error + var_term) + 1e-8)
+        # Assigns all probes
+        P_abs2 = xp.maximum(xp.abs(P_est) ** 2, 1e-8)
+        P_inv = xp.conj(P_est) / P_abs2
+        for probe in self.obj_node.probe_registry.values():
+            probe.set_data(P_est, data_abs=P_abs2, data_inv=P_inv)
 
-                probe.child.msg_from_denoiser.precision = gamma_new
+        #Assign to all precisions
+        for i, probe in enumerate(self.obj_node.probe_registry.values()):
+            probe.child.msg_from_denoiser.precision = gamma_all[i].item()
+
 

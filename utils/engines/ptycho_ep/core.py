@@ -13,7 +13,7 @@ class PtychoEP:
 
     def __init__(self, ptycho, damping=0.7, seed: int | None = None,
                  obj_init=None, prb_init=None, prior_name="gaussian",
-                 callback=None, **prior_kwargs):
+                 callback=None, n_probe_update : int = 0, **prior_kwargs):
         """
         Parameters
         ----------
@@ -50,6 +50,13 @@ class PtychoEP:
         for diff in ptycho._diff_data:
             self.obj_node.register_data(diff)
             self.obj_node.probe_registry[diff].child.denoiser.damping = damping
+        
+        # initialize probe update (optional)
+        self.n_probe_update = n_probe_update
+        if n_probe_update > 0:
+            from .probe_updater import ProbeUpdater
+            self.probe_updater = ProbeUpdater(self.obj_node) 
+
 
     def run(self, n_iter=100):
         """
@@ -59,6 +66,8 @@ class PtychoEP:
         ----------
         n_iter : int
             Number of EP iterations.
+        n_probe_update : int
+            Number of probe EM updates per iteration. Set to 0 to disable.
 
         Returns
         -------
@@ -82,6 +91,10 @@ class PtychoEP:
                 probe.child.backward()
                 probe.backward()
                 self.obj_node.backward(diff)
+            
+            # --- Probe EM update ---
+            if self.n_probe_update > 0:
+                self.probe_updater.update(n_iter=self.n_probe_update)
 
             # Optional callback
             if self.callback:

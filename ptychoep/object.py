@@ -15,7 +15,7 @@ class Object:
     This class maintains the global estimate of the object as an 
     AccumulativeUncertainArray (AUA), tracks messages exchanged 
     with data nodes (via probes), and holds references to all 
-    associated probe, channel, and denoiser objects.
+    associated probe, channel, and Likelihood objects.
 
     Attributes
     ----------

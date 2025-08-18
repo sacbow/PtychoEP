@@ -25,9 +25,9 @@ def test_fft_channel_initialization(backend):
     probe = Probe(data=probe_data, parent=DummyObject(), diffraction=diff)
     fft_ch = FFTChannel(parent_probe=probe, diff=diff)
 
-    # Check that msg_from_denoiser is initialized
-    assert isinstance(fft_ch.msg_from_denoiser, UncertainArray)
-    assert fft_ch.msg_from_denoiser.scalar_precision
+    # Check that msg_from_likelihood is initialized
+    assert isinstance(fft_ch.msg_from_likelihood, UncertainArray)
+    assert fft_ch.msg_from_likelihood.scalar_precision
 
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
@@ -42,7 +42,7 @@ def test_fft_channel_forward(backend):
         def __init__(self):
             self.object_init = xp.ones((8, 8), dtype=xp.complex64)
 
-    class DummyDenoiser:
+    class DummyLikelihood:
         def __init__(self):
             self.msg_from_fft = None
 
@@ -51,13 +51,13 @@ def test_fft_channel_forward(backend):
 
     probe = Probe(data=probe_data, parent=DummyObject(), diffraction=diff)
     fft_ch = FFTChannel(parent_probe=probe, diff=diff)
-    fft_ch.denoiser = DummyDenoiser()
+    fft_ch.likelihood = DummyLikelihood()
 
     ua = UncertainArray(xp.ones(shape, dtype=xp.complex64), precision=1.0)
     fft_ch.input_belief = ua
 
     fft_ch.forward()
-    assert isinstance(fft_ch.denoiser.msg_from_fft, UncertainArray)
+    assert isinstance(fft_ch.likelihood.msg_from_fft, UncertainArray)
 
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
@@ -77,7 +77,7 @@ def test_fft_channel_backward(backend):
     probe = Probe(data=xp.ones(shape, dtype=xp.complex64), parent=DummyObject(), diffraction=diff)
     fft_ch = FFTChannel(parent_probe=probe, diff=diff)
 
-    fft_ch.msg_from_denoiser = UncertainArray(xp.ones(shape, dtype=xp.complex64), precision=1.0)
+    fft_ch.msg_from_likelihood = UncertainArray(xp.ones(shape, dtype=xp.complex64), precision=1.0)
     fft_ch.backward()
 
     assert isinstance(fft_ch.msg_to_probe, UncertainArray)
@@ -102,7 +102,7 @@ def test_fft_channel_missing_inputs(backend):
     with pytest.raises(RuntimeError):
         fft_ch.forward()
 
-    # msg_from_denoiser not set → backward should fail
-    fft_ch.msg_from_denoiser = None
+    # msg_from_likelihood not set → backward should fail
+    fft_ch.msg_from_likelihood = None
     with pytest.raises(RuntimeError):
         fft_ch.backward()

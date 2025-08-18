@@ -51,7 +51,7 @@ def test_probe_updater_runs_and_updates_probe(backend):
         probe = obj_node.probe_registry[diff]
         probe.forward()
         probe.child.forward()
-        probe.child.denoiser.backward()
+        probe.child.likelihood.backward()
         probe.child.backward()
         probe.backward()
         obj_node.backward(diff)
@@ -66,5 +66,5 @@ def test_probe_updater_runs_and_updates_probe(backend):
 
     # --- Check that precision was updated ---
     for probe in obj_node.probe_registry.values():
-        precision = probe.child.msg_from_denoiser.precision
+        precision = probe.child.msg_from_likelihood.precision
         assert precision > 0

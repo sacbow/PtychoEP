@@ -20,7 +20,7 @@ class PtychoEP:
         ptycho : Ptycho
             Ptycho object holding object/probe/diffraction geometry.
         damping : float
-            Damping coefficient used in denoiser backward pass.
+            Damping coefficient used in Likelihood backward pass.
         obj_init : np.ndarray or None
             Optional object initialization.
         prb_init : np.ndarray or None
@@ -46,10 +46,10 @@ class PtychoEP:
         )
         self.obj_node.set_prior(prior_name, **prior_kwargs)
 
-        # --- Register diffraction data and assign denoiser damping ---
+        # --- Register diffraction data and assign Likelihood damping ---
         for diff in ptycho._diff_data:
             self.obj_node.register_data(diff)
-            self.obj_node.probe_registry[diff].child.denoiser.damping = damping
+            self.obj_node.probe_registry[diff].child.likelihood.damping = damping
         
         # initialize probe update (optional)
         self.n_probe_update = n_probe_update
@@ -87,7 +87,7 @@ class PtychoEP:
                 probe = self.obj_node.probe_registry[diff]
                 probe.forward()
                 probe.child.forward()
-                probe.child.denoiser.backward()
+                probe.child.likelihood.backward()
                 probe.child.backward()
                 probe.backward()
                 self.obj_node.backward(diff)
@@ -99,7 +99,7 @@ class PtychoEP:
             # Optional callback
             if self.callback:
                 mean_err = xp.mean(xp.array([
-                    p.child.denoiser.error for p in self.obj_node.probe_registry.values()
+                    p.child.likelihood.error for p in self.obj_node.probe_registry.values()
                 ]))
                 self.callback(it, float(mean_err), self.obj_node.get_belief().mean)
 

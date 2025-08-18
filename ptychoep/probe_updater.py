@@ -43,7 +43,7 @@ class ProbeUpdater:
                 O_mu = full_belief.mean[indices]
                 O_var = 1.0 / full_belief.precision[indices]
                 Phi = probe.child.msg_to_probe.mean
-                gamma = probe.child.msg_from_denoiser.precision
+                gamma = probe.child.msg_from_likelihood.precision
                 O_mu_list.append(O_mu)
                 O_var_list.append(O_var)
                 Phi_list.append(Phi)
@@ -76,6 +76,6 @@ class ProbeUpdater:
 
         #Assign to all precisions
         for i, probe in enumerate(self.obj_node.probe_registry.values()):
-            probe.child.msg_from_denoiser.precision = gamma_all[i].item()
+            probe.child.msg_from_likelihood.precision = gamma_all[i].item()
 
 

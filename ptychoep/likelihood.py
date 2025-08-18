@@ -5,9 +5,9 @@ from ptycho.data import DiffractionData
 from typing import Optional
 
 
-class Denoiser:
+class Likelihood:
     """
-    Output Denoiser node for EP-based ptychography.
+    Output Likelihood node for EP-based ptychography.
 
     This node models the observation of noisy diffraction data |z| + noise
     and performs a local approximation of the posterior over the complex field z.
@@ -15,14 +15,14 @@ class Denoiser:
 
     def __init__(self, diff: DiffractionData, parent: "FFTChannel"):
         """
-        Initialize the Denoiser node.
+        Initialize the Likelihood node.
 
         Parameters
         ----------
         diff : DiffractionData
             The observed diffraction data node (contains intensity, etc.).
         parent : FFTChannel
-            The parent FFTChannel this denoiser is linked to.
+            The parent FFTChannel this Likelihood is linked to.
         """
         self.diff = diff
         self.damping = 1.0
@@ -54,7 +54,7 @@ class Denoiser:
         Sets self.belief with mean and precision.
         """
         if self.msg_from_fft is None:
-            raise RuntimeError("Denoiser.compute_belief: msg_from_fft not set")
+            raise RuntimeError("Likelihood.compute_belief: msg_from_fft not set")
 
         xp = np()
         z0 = self.msg_from_fft.mean
@@ -80,7 +80,7 @@ class Denoiser:
 
     def backward(self) -> None:
         """
-        Backward message passing: update FFTChannel.msg_from_denoiser.
+        Backward message passing: update FFTChannel.msg_from_likelihood.
 
         This performs the following steps:
         1. Computes the belief (posterior over z) via Laplace approximation.
@@ -94,5 +94,5 @@ class Denoiser:
 
         self.compute_belief()
         msg_back_raw = self.belief.to_scalar_precision() / self.msg_from_fft
-        msg_back_new = msg_back_raw.damp_with(self.parent.msg_from_denoiser, damping = self.damping)
-        self.parent.msg_from_denoiser = msg_back_new
+        msg_back_new = msg_back_raw.damp_with(self.parent.msg_from_likelihood, damping = self.damping)
+        self.parent.msg_from_likelihood = msg_back_new

@@ -1,21 +1,21 @@
 import argparse
 from functools import partial
 
-from PtychoEP.utils.backend import set_backend, np
-from PtychoEP.utils.ptycho.core import Ptycho
-from PtychoEP.utils.io_utils import load_data_image
-from PtychoEP.utils.ptycho.scan_utils import generate_spiral_scan_positions
-from PtychoEP.utils.ptycho.noise import GaussianNoise
-from PtychoEP.utils.engines.pie import PIE
+from backend.backend import set_backend, np
+from ptycho.core import Ptycho
+from utils.io_utils import load_data_image
+from ptycho.scan_utils import generate_spiral_scan_positions
+from ptycho.noise import GaussianNoise
+from classic_engines.rpie import rPIE
 
-from PtychoEP.profile.profile_utils import time_execution, profile_execution
+from profiling.profile_utils import time_execution, profile_execution
 
 
 def main():
-    parser = argparse.ArgumentParser(description="PIE profiling script")
+    parser = argparse.ArgumentParser(description="rPIE profiling script")
     parser.add_argument("--backend", type=str, default="numpy", choices=["numpy", "cupy"],
                         help="Backend to use (numpy or cupy)")
-    parser.add_argument("--niter", type=int, default=50, help="Number of PIE iterations")
+    parser.add_argument("--niter", type=int, default=50, help="Number of rPIE iterations")
     parser.add_argument("--num_points", type=int, default=200, help="Number of scan points")
     parser.add_argument("--use_noise", action="store_true", help="Add Gaussian noise to diffraction data")
     parser.add_argument("--profile", action="store_true", help="Enable cProfile mode")
@@ -33,6 +33,7 @@ def main():
     ptycho = Ptycho()
     obj = np().array(load_data_image("cameraman.png")) * np().exp(1j * np().pi * np().array(load_data_image("eagle.png")))
     probe = np().array(load_data_image("probe.png"))
+    obj, probe = np().asarray(obj, dtype = np().complex64),  np().asarray(probe, dtype = np().complex64)
     ptycho.set_object(obj)
     ptycho.set_probe(probe)
 
@@ -45,18 +46,18 @@ def main():
         GaussianNoise(var=1e-3) @ ptycho
         print("[INFO] Gaussian noise added (var=1e-3)")
 
-    # --- PIEインスタンス生成 ---
-    pie = PIE(ptycho, alpha=0.1)
-    run_fn = partial(pie.run, n_iter=args.niter)
+    # --- rPIEインスタンス生成 ---
+    rpie = rPIE(ptycho, alpha=0.1, beta=0.2)
+    run_fn = partial(rpie.run, n_iter=args.niter)
 
     # --- プロファイリング or 時間計測 ---
     if args.profile:
-        print(f"[INFO] Running PIE with cProfile (n_iter={args.niter})...")
+        print(f"[INFO] Running rPIE with cProfile (n_iter={args.niter})...")
         profile_execution(run_fn, sort_key=args.profile_sort, limit=args.profile_limit, output_file=args.profile_output)
     else:
-        print(f"[INFO] Running PIE timing (n_iter={args.niter})...")
+        print(f"[INFO] Running rPIE timing (n_iter={args.niter})...")
         elapsed = time_execution(run_fn, backend=args.backend)
-        print(f"[RESULT] PIE execution time ({args.backend}): {elapsed:.3f} sec")
+        print(f"[RESULT] rPIE execution time ({args.backend}): {elapsed:.3f} sec")
 
 
 if __name__ == "__main__":

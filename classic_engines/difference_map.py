@@ -62,8 +62,8 @@ class DifferenceMap:
         Phi, _ = Fourier_projector(exit_waves, self.diffs)
 
         for it in range(n_iter):
-            _, err = Fourier_projector(exit_waves, self.diffs, return_per_scan=False)
             if self.callback:
+                _, err = Fourier_projector(exit_waves, self.diffs, return_per_scan=False)
                 self.callback(it, float(err), self.obj)
 
             self._update_object_probe(Phi)

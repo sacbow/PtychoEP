@@ -63,7 +63,7 @@ class Likelihood:
         v = 1.0/self.gamma_w
 
         abs_z0 = xp.abs(z0)
-        abs_z0_safe = xp.maximum(abs_z0, 1e-8)
+        abs_z0_safe = abs_z0
         unit_phase = z0 / abs_z0_safe
 
         # Posterior mean (amplitude-domain Laplace approx)
@@ -72,7 +72,7 @@ class Likelihood:
 
         # Posterior precision
         v_hat = (v0 * (v0 * self.y + 4 * v * abs_z0_safe)) / (2.0 * abs_z0_safe * (v0 + 2 * v))
-        v_hat = xp.maximum(v_hat, 1e-8)
+        #v_hat = xp.maximum(v_hat, 1e-8)
         precision = 1.0 / v_hat
 
         self.belief = UA(mean=z_hat, precision=precision, dtype=z0.dtype)

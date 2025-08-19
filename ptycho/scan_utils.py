@@ -7,7 +7,7 @@ def generate_spiral_scan_positions(
     image_size: int,
     probe_size: int,
     num_points: int,
-    step: float = 10,
+    step: float = 5,
     center: Tuple[int, int] = None,
     bounds_check: bool = True
 ) -> List[Tuple[int, int]]:

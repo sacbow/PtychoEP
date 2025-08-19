@@ -1,14 +1,14 @@
 import argparse
 from functools import partial
 
-from PtychoEP.utils.backend import set_backend, np
-from PtychoEP.utils.ptycho.core import Ptycho
-from PtychoEP.utils.io_utils import load_data_image
-from PtychoEP.utils.ptycho.scan_utils import generate_spiral_scan_positions
-from PtychoEP.utils.ptycho.noise import GaussianNoise
-from PtychoEP.utils.engines.epie import ePIE
+from backend.backend import set_backend, np
+from ptycho.core import Ptycho
+from utils.io_utils import load_data_image
+from ptycho.scan_utils import generate_spiral_scan_positions
+from ptycho.noise import GaussianNoise
+from classic_engines.epie import ePIE
 
-from PtychoEP.profile.profile_utils import time_execution, profile_execution
+from profiling.profile_utils import time_execution, profile_execution
 
 
 def main():

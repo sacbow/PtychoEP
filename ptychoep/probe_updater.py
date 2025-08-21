@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .object import Object
-from backend.backend import np
+from PtychoEP.backend.backend import np
 
 class ProbeUpdater:
     """

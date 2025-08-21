@@ -1,7 +1,7 @@
-from backend.backend import np
-from rng.rng_utils import get_rng, normal
-from ptycho.core import Ptycho
-from ptycho.projector import Fourier_projector
+from PtychoEP.backend.backend import np
+from PtychoEP.rng.rng_utils import get_rng, normal
+from PtychoEP.ptycho.core import Ptycho
+from PtychoEP.ptycho.projector import Fourier_projector
 
 class BasePIE:
     def __init__(self, ptycho: Ptycho, alpha: float = 0.1, obj_init=None, callback=None):

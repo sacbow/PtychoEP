@@ -1,14 +1,14 @@
 import argparse
 from functools import partial
 
-from backend.backend import set_backend, np
-from ptycho.core import Ptycho
-from utils.io_utils import load_data_image
-from ptycho.scan_utils import generate_spiral_scan_positions
-from ptycho.noise import GaussianNoise
-from classic_engines.difference_map import DifferenceMap
+from PtychoEP.backend.backend import set_backend, np
+from PtychoEP.ptycho.core import Ptycho
+from PtychoEP.utils.io_utils import load_data_image
+from PtychoEP.ptycho.scan_utils import generate_spiral_scan_positions
+from PtychoEP.ptycho.noise import GaussianNoise
+from PtychoEP.classic_engines.difference_map import DifferenceMap
 
-from profiling.profile_utils import time_execution, profile_execution
+from .profile_utils import time_execution, profile_execution
 
 
 def main():

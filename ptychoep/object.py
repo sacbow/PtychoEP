@@ -1,9 +1,9 @@
 from __future__ import annotations
 from .accumulative_uncertain_array import AccumulativeUncertainArray as AUA
 from .uncertain_array import UncertainArray as UA
-from backend.backend import np
-from rng.rng_utils import get_rng, normal
-from ptycho.data import DiffractionData
+from PtychoEP.backend.backend import np
+from PtychoEP.rng.rng_utils import get_rng, normal
+from PtychoEP.ptycho.data import DiffractionData
 from .probe import Probe
 from .prior import BasePrior, SparsePrior
 

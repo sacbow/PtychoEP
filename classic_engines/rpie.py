@@ -1,4 +1,4 @@
-from ptycho.projector import Fourier_projector
+from PtychoEP.ptycho.projector import Fourier_projector
 from .base_pie import BasePIE
 
 class rPIE(BasePIE):

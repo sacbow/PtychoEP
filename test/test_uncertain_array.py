@@ -1,7 +1,7 @@
 import pytest
-from backend.backend import set_backend, np as backend_np
-from rng.rng_utils import get_rng
-from ptychoep.uncertain_array import UncertainArray
+from PtychoEP.backend.backend import set_backend, np as backend_np
+from PtychoEP.rng.rng_utils import get_rng
+from PtychoEP.ptychoep.uncertain_array import UncertainArray
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_init_and_properties(backend):
@@ -126,7 +126,7 @@ def test_fft_and_ifft(backend):
     xp = backend_np()
     mean = xp.ones((4, 4), dtype=xp.complex64)
     ua = UncertainArray(mean, 1.0)  # scalar precision
-    from ptychoep.uncertain_array import fft_ua, ifft_ua
+    from PtychoEP.ptychoep.uncertain_array import fft_ua, ifft_ua
 
     # Forward FFT
     ua_fft = fft_ua(ua)

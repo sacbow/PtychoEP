@@ -1,7 +1,7 @@
 import pytest
-from ptycho.core import Ptycho
-from ptycho.noise import GaussianNoise, PoissonNoise
-from backend.backend import set_backend, np as backend_np
+from PtychoEP.ptycho.core import Ptycho
+from PtychoEP.ptycho.noise import GaussianNoise, PoissonNoise
+from PtychoEP.backend.backend import set_backend, np as backend_np
 
 @pytest.fixture(autouse=True)
 def setup_backend():
@@ -16,7 +16,7 @@ def create_simple_ptycho():
     p.set_object(obj)
     p.set_probe(prb)
     # 中心位置に1つだけdiffractionデータを生成
-    from ptycho.forward import generate_diffraction
+    from PtychoEP.ptycho.forward import generate_diffraction
     positions = [(32, 32)]
     diffs = generate_diffraction(p, positions)
     p.set_diffraction_from_forward(diffs)

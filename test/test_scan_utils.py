@@ -1,10 +1,10 @@
 import pytest
 from numbers import Integral
-from ptycho.scan_utils import (
+from PtychoEP.ptycho.scan_utils import (
     generate_spiral_scan_positions,
     generate_grid_scan_positions,
 )
-from backend.backend import set_backend
+from PtychoEP.backend.backend import set_backend
 
 @pytest.fixture(autouse=True)
 def setup_backend():

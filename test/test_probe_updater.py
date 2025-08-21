@@ -1,11 +1,11 @@
 import pytest
-from backend.backend import set_backend, np as backend_np
-from utils.io_utils import load_data_image
-from ptycho.aperture_utils import circular_aperture
-from ptycho.scan_utils import generate_spiral_scan_positions
-from ptycho.core import Ptycho
-from ptychoep.object import Object
-from ptychoep.probe_updater import ProbeUpdater
+from PtychoEP.backend.backend import set_backend, np as backend_np
+from PtychoEP.utils.io_utils import load_data_image
+from PtychoEP.ptycho.aperture_utils import circular_aperture
+from PtychoEP.ptycho.scan_utils import generate_spiral_scan_positions
+from PtychoEP.ptycho.core import Ptycho
+from PtychoEP.ptychoep.object import Object
+from PtychoEP.ptychoep.probe_updater import ProbeUpdater
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_probe_updater_runs_and_updates_probe(backend):

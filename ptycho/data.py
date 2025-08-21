@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Tuple, Optional, Union
-from backend.backend import np
+from PtychoEP.backend.backend import np
 
 IdxType = Optional[Tuple[slice, slice]]
 
@@ -25,7 +25,7 @@ class DiffractionData:
     def show(self, ax=None, log_scale=True, cmap="jet"):
         """matplotlibを用いて回折像を可視化。"""
         import matplotlib.pyplot as plt
-        from backend.backend import np
+        from PtychoEP.backend.backend import np
 
         data = self.diffraction
         if log_scale:

@@ -1,8 +1,6 @@
-# utils/engines/ptycho_ep/core.py
-
-from backend.backend import np
-from rng.rng_utils import get_rng
-from ptycho.data import DiffractionData
+from PtychoEP.backend.backend import np
+from PtychoEP.rng.rng_utils import get_rng
+from PtychoEP.ptycho.data import DiffractionData
 from .object import Object
 from .uncertain_array import UncertainArray as UA
 

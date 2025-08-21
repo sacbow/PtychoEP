@@ -1,9 +1,9 @@
 import pytest
-from backend.backend import set_backend, np
-from ptycho.core import Ptycho
-from utils.io_utils import load_data_image
-from ptycho.scan_utils import generate_spiral_scan_positions
-from classic_engines.difference_map import DifferenceMap
+from PtychoEP.backend.backend import set_backend, np
+from PtychoEP.ptycho.core import Ptycho
+from PtychoEP.utils.io_utils import load_data_image
+from PtychoEP.ptycho.scan_utils import generate_spiral_scan_positions
+from PtychoEP.classic_engines.difference_map import DifferenceMap
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_difference_map_runs_and_reduces_error(backend):

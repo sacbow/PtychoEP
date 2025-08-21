@@ -1,9 +1,9 @@
 import pytest
-from backend.backend import set_backend, np as backend_np
-from ptychoep.object import Object
-from ptychoep.uncertain_array import UncertainArray
-from ptychoep.accumulative_uncertain_array import AccumulativeUncertainArray
-from ptycho.data import DiffractionData
+from PtychoEP.backend.backend import set_backend, np as backend_np
+from PtychoEP.ptychoep.object import Object
+from PtychoEP.ptychoep.uncertain_array import UncertainArray
+from PtychoEP.ptychoep.accumulative_uncertain_array import AccumulativeUncertainArray
+from PtychoEP.ptycho.data import DiffractionData
 
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])

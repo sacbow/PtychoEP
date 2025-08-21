@@ -1,6 +1,6 @@
 from typing import List, Tuple, Union, Optional, Callable
-from ptycho.data import DiffractionData
-from backend.backend import np
+from PtychoEP.ptycho.data import DiffractionData
+from PtychoEP.backend.backend import np
 
 class Ptycho:
     """

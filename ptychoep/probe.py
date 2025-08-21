@@ -2,8 +2,8 @@ from __future__ import annotations
 from .uncertain_array import UncertainArray as UA
 from .fft_channel import FFTChannel
 from typing import Optional, Any
-from backend.backend import np
-from ptycho.data import DiffractionData
+from PtychoEP.backend.backend import np
+from PtychoEP.ptycho.data import DiffractionData
 
 class Probe:
     def __init__(

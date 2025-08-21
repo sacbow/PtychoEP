@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from backend.backend import np
-from rng.rng_utils import get_rng, normal, poisson
+from PtychoEP.backend.backend import np
+from PtychoEP.rng.rng_utils import get_rng, normal, poisson
 
 class Noise(ABC):
     """ノイズモデル基底クラス（強度ベース dB単位のSN比計算を内蔵）"""
@@ -23,11 +23,12 @@ class Noise(ABC):
         return snr_db
 
 class GaussianNoise(Noise):
-    def __init__(self, var: float = 1e-3):
+    def __init__(self, var: float = 1e-3, seed : int = None):
         self.var = var
+        self.seed = seed
 
     def _apply_noise_and_compute_snr(self, ptycho):
-        rng = get_rng()
+        rng = get_rng(self.seed)
         snr_values = []
         for d in ptycho._diff_data:
             clean = d.diffraction.copy()
@@ -45,15 +46,16 @@ class GaussianNoise(Noise):
 
 
 class PoissonNoise(Noise):
-    def __init__(self, scale: float = 1e5):
+    def __init__(self, scale: float = 1e5, seed : int = None):
         """
         Args:
             scale: 光子数スケーリング因子（例: 1e5）
         """
         self.scale = scale
+        self.seed = seed
 
     def _apply_noise_and_compute_snr(self, ptycho):
-        rng = get_rng()
+        rng = get_rng(self.seed)
         snr_values = []
         for d in ptycho._diff_data:
             clean = d.diffraction.copy()

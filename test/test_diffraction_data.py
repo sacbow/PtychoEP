@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from ptycho.data import DiffractionData
-from backend.backend import set_backend, np as backend_np
+from PtychoEP.ptycho.data import DiffractionData
+from PtychoEP.backend.backend import set_backend, np as backend_np
 
 def test_diffraction_data_attributes():
     set_backend("numpy")

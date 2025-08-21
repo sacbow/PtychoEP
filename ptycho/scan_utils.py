@@ -1,7 +1,7 @@
 import math
 from typing import List, Tuple
-from backend.backend import np
-from rng.rng_utils import get_rng, randint
+from PtychoEP.backend.backend import np
+from PtychoEP.rng.rng_utils import get_rng, randint
 
 def generate_spiral_scan_positions(
     image_size: int,

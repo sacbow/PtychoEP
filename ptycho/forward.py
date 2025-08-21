@@ -1,7 +1,7 @@
 from typing import List, Tuple
-from backend.backend import np
-from ptycho.data import DiffractionData
-from ptycho.core import Ptycho
+from PtychoEP.backend.backend import np
+from PtychoEP.ptycho.data import DiffractionData
+from .core import Ptycho
 
 def generate_diffraction(ptycho: Ptycho, positions: List[Tuple[int, int]]) -> List[DiffractionData]:
     """

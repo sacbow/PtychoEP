@@ -1,4 +1,3 @@
-# utils/backend.py
 import numpy as _np
 try:
     import cupy as _cp

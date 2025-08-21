@@ -1,10 +1,10 @@
 # test/test_engines_pie.py
 import numpy as np
-from ptycho.core import Ptycho
-from utils.io_utils import load_data_image
-from ptycho.scan_utils import generate_spiral_scan_positions
-from ptycho.forward import generate_diffraction
-from classic_engines.pie import PIE
+from PtychoEP.ptycho.core import Ptycho
+from PtychoEP.utils.io_utils import load_data_image
+from PtychoEP.ptycho.scan_utils import generate_spiral_scan_positions
+from PtychoEP.ptycho.forward import generate_diffraction
+from PtychoEP.classic_engines.pie import PIE
 
 def test_pie_runs_and_reduces_error():
     # 1. データ準備

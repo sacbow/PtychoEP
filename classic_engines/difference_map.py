@@ -1,7 +1,7 @@
 # utils/engines/difference_map.py
-from backend.backend import np
-from rng.rng_utils import get_rng, normal
-from ptycho.projector import Fourier_projector
+from PtychoEP.backend.backend import np
+from PtychoEP.rng.rng_utils import get_rng, normal
+from PtychoEP.ptycho.projector import Fourier_projector
 
 def _normalize_index_to_arrays(idx, xp):
     """(slice,slice) or (yy,xx ndarray) → (yy_flat, xx_flat) へ正規化"""

@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from backend.backend import np
+from PtychoEP.backend.backend import np
 import numpy as _np
 
 def to_numpy(arr):

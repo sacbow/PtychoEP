@@ -43,7 +43,7 @@ def pmse(x_est, x_true, crop=None):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--step", type=float, default=16.93, help="Scan step size")
-    parser.add_argument("--noise", type=float, default=3.3, help="noise variance(1e-5)")
+    parser.add_argument("--noise", type=float, default=3.4, help="noise variance(1e-5)")
     parser.add_argument("--trials", type=int, default=10, help="Number of repeated trials")
     parser.add_argument("--object", type=str, choices=["lily", "cameraman"], default="lily",
                     help="Object image set to use (lily/moon or cameraman/eagle)")

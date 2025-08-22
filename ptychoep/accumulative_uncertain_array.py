@@ -53,7 +53,7 @@ class AccumulativeUncertainArray:
     def get_ua(self, indices: tuple[slice, slice] = None) -> UncertainArray:
         """Return an UncertainArray representing the belief at specified region."""
         sl_y, sl_x = self._normalize_indices(indices)
-        mean = self._numerator[sl_y, sl_x] / self._precision[sl_y, sl_x]
+        mean = self._numerator[sl_y, sl_x] / np().maximum(self._precision[sl_y, sl_x], 1.0)
         precision = self._precision[sl_y, sl_x]
         return UncertainArray(mean=mean, precision=precision, dtype=self.dtype)
 

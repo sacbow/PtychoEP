@@ -29,7 +29,10 @@ ptychoep/
 │   ├── likelihood.py                   # Factor node representing the likelihood
 │   ├── prior.py                        # Factor node representing the prior
 │   ├── uncertain_array.py              # Abstraction of gaussian distribution
-|   ├── accumulative_uncertain_array    # Data structure used in the object node
+│   ├── uncertain_array.py              # Abstraction of gaussian distribution
+│   ├── uncertain_array.py              # Abstraction of gaussian distribution
+│   ├── accumulative_uncertain_array    # Data structure used in the object node
+|   ├── probe_updater.py                # EM update of probe (used in unknown probe scenario)
 ├── profiling/                          # Profiling and benchmarking scripts
 ├── experiments/                        # scripts for numerical experiments
 └── README.md

@@ -12,19 +12,27 @@ def generate_spiral_scan_positions(
     bounds_check: bool = True
 ) -> List[Tuple[int, int]]:
     """
-    らせん状スキャン座標を生成する。
+    Generate a Fermat spiral scan pattern for ptychography.
+
+    This function generates a list of scanning positions following a Fermat spiral trajectory,
+    which offers more uniform coverage and higher overlap ratio compared to traditional grid or concentric scans.
 
     Args:
-        image_size: 画像サイズ（正方形を前提）
-        probe_size: プローブサイズ（正方形を前提）
-        num_points: 生成するスキャン点数
-        step: らせんの広がり係数
-        center: スキャン中心座標（Noneなら画像中心）
-        bounds_check: プローブが画像からはみ出さないよう制限するか
+        image_size: Size of the square image in pixels.
+        probe_size: Size of the square probe in pixels.
+        num_points: Number of scan points to generate.
+        step: Radial expansion factor of the spiral.
+        center: Center of the scan. If None, the center of the image is used.
+        bounds_check: If True, only positions fully inside the image boundary are included.
 
     Returns:
-        スキャン位置のリスト [(y,x), ...]
+        List of (y, x) scan positions as tuples of integers.
+
+    References:
+        X. Huang et al., "Effects of overlap uniformness for ptychography," Opt. Express 22(11), 12634–12644 (2014).
+        https://doi.org/10.1364/OE.22.012634
     """
+
     if center is None:
         center = (image_size // 2, image_size // 2)
 
@@ -39,6 +47,7 @@ def generate_spiral_scan_positions(
         positions.append((y, x))
     return positions
 
+
 def generate_grid_scan_positions(
     image_size: int,
     probe_size: int,
@@ -48,10 +57,10 @@ def generate_grid_scan_positions(
     seed: int = None
 ) -> List[Tuple[int, int]]:
     """
-    to be deplicated.
+    Deprecated. Use generate_centered_grid_positions instead.
     """
     positions: List[Tuple[int, int]] = []
-    rng = get_rng(seed)  # backend対応の乱数生成器
+    rng = get_rng(seed)
 
     for y in range(0, image_size, step):
         for x in range(0, image_size, step):
@@ -60,7 +69,6 @@ def generate_grid_scan_positions(
             if jitter > 0:
                 y_pos += randint(rng, -jitter, jitter + 1)
                 x_pos += randint(rng, -jitter, jitter + 1)
-            # 境界チェック
             if bounds_check:
                 if (x_pos - probe_size // 2 < 0 or x_pos + probe_size // 2 > image_size or
                     y_pos - probe_size // 2 < 0 or y_pos + probe_size // 2 > image_size):
@@ -68,6 +76,7 @@ def generate_grid_scan_positions(
             positions.append((y_pos, x_pos))
 
     return positions
+
 
 def generate_centered_grid_positions(
     image_size: int,
@@ -80,25 +89,24 @@ def generate_centered_grid_positions(
     bounds_check: bool = True
 ) -> List[Tuple[int, int]]:
     """
-    画像中心付近にスキャン位置を並べる格子状スキャンパターンを生成。
+    Generate a regular grid of scan positions centered in the image.
 
     Args:
-        image_size: 画像サイズ（正方形）
-        probe_size: プローブサイズ（正方形）
-        step: スキャン間隔（ピクセル）
-        num_points_y: Y方向のスキャン数
-        num_points_x: X方向のスキャン数
-        jitter: ジッターの最大幅（±jitter範囲でずらす）
-        seed: 乱数シード
-        bounds_check: プローブが画像からはみ出さないよう制限するか
+        image_size (int): Size of the square object image.
+        probe_size (int): Size of the square probe.
+        step (int): Distance between adjacent scan points (in pixels).
+        num_points_y (int): Number of scan points along Y-axis.
+        num_points_x (int): Number of scan points along X-axis.
+        jitter (int): Maximum random displacement added to each scan position.
+        seed (int, optional): Random seed for jitter reproducibility.
+        bounds_check (bool): Whether to exclude positions where probe exceeds image boundary.
 
     Returns:
-        スキャン位置のリスト [(y, x), ...]
+        List[Tuple[int, int]]: List of (y, x) scan positions.
     """
     positions: List[Tuple[int, int]] = []
     rng = get_rng(seed)
 
-    # スキャン領域の中心を画像中心に合わせる
     start_y = image_size // 2 - (num_points_y - 1) * step // 2
     start_x = image_size // 2 - (num_points_x - 1) * step // 2
 

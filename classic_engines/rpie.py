@@ -3,6 +3,29 @@ from ptychoep.backend.backend import np
 from .base_pie import BasePIE
 
 class rPIE(BasePIE):
+    """
+    Relaxed Ptychographical Iterative Engine (rPIE).
+
+    This algorithm is an extension of the conventional PIE algorithm that 
+    introduces a relaxation parameter for more stable updates of the object 
+    and probe. It performs iterative updates of both object and probe 
+    estimates based on the measured diffraction data.
+
+    Attributes:
+        alpha (float): Relaxation parameter for the object update.
+        beta (float): Relaxation parameter for the probe update.
+        obj (ndarray): Current estimate of the object.
+        prb (ndarray): Current estimate of the probe.
+        callback (callable): Optional callback function to monitor progress.
+        dtype (np.dtype): Data type for internal arrays.
+        seed (int): Random seed for initialization.
+
+    Notes:
+        - The probe is updated in each iteration using the same principle as the object.
+        - The computational cost is nearly the same as ePIE, as both update 
+          object and probe with similar operations and FFT projections.
+    """
+
     def __init__(self, ptycho, alpha=0.1, beta=0.1, obj_init=None, prb_init = None, callback=None, dtype = np().complex64, seed : int = None):
         super().__init__(ptycho, alpha, obj_init, dtype, callback, seed)
         self.prb = prb_init if prb_init is not None else ptycho.prb

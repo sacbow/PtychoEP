@@ -3,10 +3,38 @@ from ptychoep.backend.backend import np
 from .base_pie import BasePIE
 
 class ePIE(BasePIE):
+    """
+    Implementation of the ePIE (extended Ptychographical Iterative Engine) algorithm.
+
+    Unlike the classic PIE, ePIE simultaneously updates both the object and the probe 
+    during iterative reconstruction. This is particularly useful when the probe is unknown 
+    or partially inaccurate.
+
+    Attributes:
+        prb (ndarray): Probe array (can be initialized externally or taken from the Ptycho object).
+        beta (float): Step size for the probe update.
+
+    Args:
+        ptycho (Ptycho): Ptycho object containing object and scan information.
+        alpha (float): Step size for the object update.
+        beta (float): Step size for the probe update.
+        obj_init (ndarray or None): Optional initial guess for the object. If None, random complex.
+        prb_init (ndarray or None): Optional initial guess for the probe. If None, taken from `ptycho.prb`.
+        callback (callable or None): Optional function to monitor or log progress per iteration.
+        dtype (dtype): Data type for internal arrays.
+        seed (int or None): Optional random seed for reproducibility.
+
+    Returns:
+        A tuple of (reconstructed object, reconstructed probe).
+    """
+
     def __init__(self, ptycho, alpha=0.1, beta=0.1, obj_init=None, prb_init = None, callback=None, dtype = np().complex64, seed : int = None):
         super().__init__(ptycho, alpha, obj_init, dtype, callback, seed)
         self.prb = prb_init if prb_init is not None else ptycho.prb
         self.beta = beta
+    
+    # The update_object step tends to be more time-consuming than update_probe.
+    # This is likely due to the fact that it performs an in-place write to self.obj[yy, xx], which is more expensive than read-only access.
 
     def _update_object(self, proj_wave, exit_wave, indices):
         yy, xx = indices

@@ -1,0 +1,10 @@
+numpy>=1.22
+matplotlib>=3.5
+imageio>=2.30  # if used in load_data_image
+
+# Optional (for GPU acceleration)
+cupy-cuda12x; platform_system != "Windows"
+
+# Optional (for testing)
+pytest>=8.0
+pytest-cov>=6.0

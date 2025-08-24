@@ -4,7 +4,22 @@ from ptychoep.rng.rng_utils import get_rng, normal
 from ptychoep.ptycho.projector import Fourier_projector
 
 def _normalize_index_to_arrays(idx, xp):
-    """(slice,slice) or (yy,xx ndarray) → (yy_flat, xx_flat) へ正規化"""
+    """
+    Normalize indexing formats to flat array indices.
+
+    Converts a 2D slice-based index (slice, slice) or tuple of arrays (yy, xx)
+    into flattened (yy_flat, xx_flat) arrays for consistent scatter/gather operations.
+
+    This is especially useful in algorithms like Difference Map where object updates
+    rely on scatter-add operations over overlapping scan regions.
+
+    Args:
+        idx (tuple): A tuple of either (slice, slice) or (ndarray, ndarray) indexers.
+        xp: The backend module (numpy or cupy).
+
+    Returns:
+        tuple: A pair of 1D arrays (yy, xx) representing flattened y- and x-coordinates.
+    """
     y_idx, x_idx = idx
     if isinstance(y_idx, slice) and isinstance(x_idx, slice):
         y = xp.arange(y_idx.start, y_idx.stop)
@@ -12,19 +27,62 @@ def _normalize_index_to_arrays(idx, xp):
         YY, XX = xp.meshgrid(y, x, indexing="ij")
         return YY.reshape(-1), XX.reshape(-1)
     else:
-        # すでに配列（旧仕様）の場合
         return y_idx.reshape(-1), x_idx.reshape(-1)
 
 def _gather_patch(obj, idx, xp):
-    """obj[idx] を slice/配列の両方で安全に取得"""
+    """
+    Safely extract a patch from the object array using flexible indexing.
+
+    Supports both slice-based and advanced indexing (with arrays), and returns
+    the sub-region of the object array corresponding to the scan position.
+
+    Args:
+        obj (ndarray): The full complex object array.
+        idx (tuple): A tuple of (slice, slice) or (ndarray, ndarray) specifying the patch.
+        xp: The backend module (numpy or cupy).
+
+    Returns:
+        ndarray: The selected sub-region of the object array.
+    """
+
     y_idx, x_idx = idx
     if isinstance(y_idx, slice) and isinstance(x_idx, slice):
         return obj[y_idx, x_idx]
     else:
-        return obj[y_idx, x_idx]  # 高度なインデクシング（旧仕様）
+        return obj[y_idx, x_idx]
     
 
 class DifferenceMap:
+    """
+    Difference Map algorithm for ptychographic phase retrieval.
+
+    This implementation follows the standard formulation of the Difference Map (DM)
+    approach, which iteratively refines estimates of the object and probe
+    by alternating between real-space and Fourier-space constraints.
+
+    The method maintains and updates the object and probe via scatter-add style
+    averaging over overlapping patches in the object domain. Each iteration consists
+    of applying a projection operator in the Fourier domain and combining it with
+    previous estimates to enforce consistency with measured diffraction data.
+
+    Attributes:
+        ptycho (Ptycho): Ptycho object containing scan positions and diffraction data.
+        beta (float): Relaxation parameter for the update.
+        obj (ndarray): Current estimate of the object.
+        prb (ndarray): Current estimate of the probe.
+        callback (callable): Optional function to monitor convergence at each iteration.
+        n_scan (int): Number of scan positions.
+        prb_len (int): Size of the square probe region.
+        diffs (ndarray): Stacked measured diffraction amplitudes.
+        indices (List[slice or arrays]): Index mappings for scan regions.
+        all_yy, all_xx (ndarray): Flattened scan region indices for scatter-add operations.
+
+    Notes:
+        - The computational cost is dominated by FFT and scatter operations.
+        - The implementation supports both slice-based and array-based indexing of patches.
+        - The update rules are based on the original Difference Map formulation used in ptychography.
+    """
+
     def __init__(self, ptycho, beta=1.0, obj_init=None, prb_init=None, callback=None, seed : int = None):
         self.xp = np()
         self.ptycho = ptycho
@@ -51,7 +109,6 @@ class DifferenceMap:
         self.fft2 = xp.fft.fft2
         self.ifft2 = xp.fft.ifft2
 
-        # ここを slice/配列両対応に
         yyxx = [_normalize_index_to_arrays(idx, xp) for idx in self.indices]
         self.all_yy = xp.concatenate([yy for yy, _ in yyxx])
         self.all_xx = xp.concatenate([xx for _, xx in yyxx])

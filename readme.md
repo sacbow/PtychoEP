@@ -17,16 +17,21 @@ This repository is designed for both research reproducibility and extensibility 
 
 ## Repository Structure
 ```
-PtychoEP/
-├── core/                       # Core algorithm drivers
-├── utils/                      # Utilities (scan gen, aperture, RNG, etc.)
-├── modules/
-│   ├── fft_channel.py          # Fourier forward model
-│   ├── likelihood.py           # Likelihood module (|z| + noise)
-│   ├── prior.py                # Prior module for object/probe
-│   ├── uncertain_array.py      # Main message passing data structure
-├── profiling/                  # Profiling and benchmarking scripts
-├── notebooks/                  # Example reconstructions and analysis
+ptychoep/
+├── ptycho/                             # Container for ptychographic datasets
+├── backend/                            # backend abstraction (numpy/cupy)
+├── utils/                              # Utilities (io)
+├── rng/                                # backend abstraction of random number generator
+├── ptychoep/
+│   ├── object.py                       # Variable node representing the object
+│   ├── probe.py                        # Factor node representing the multiplication with probe
+│   ├── fft_channel.py                  # Factor node representing the fourier transform
+│   ├── likelihood.py                   # Factor node representing the likelihood
+│   ├── prior.py                        # Factor node representing the prior
+│   ├── uncertain_array.py              # Abstraction of gaussian distribution
+|   ├── accumulative_uncertain_array    # Data structure used in the object node
+├── profiling/                          # Profiling and benchmarking scripts
+├── experiments/                        # scripts for numerical experiments
 └── README.md
 
 ```
@@ -35,28 +40,23 @@ PtychoEP/
 ```bash
 # Clone and set up virtual environment
 git clone https://github.com/yourname/PtychoEP.git
-cd PtychoEP
+cd ptychoep
 python -m venv .venv
 source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 ```
 
-### Example: Run fixed-probe PIE reconstruction
+### Example: Profile PtychoEP with EM algorithm
 ```bash
-python profiling/profile_pie.py --backend numpy --niter 50
+python profiling/profile_ep.py --backend numpy --niter 50 --n_probe_update 1
 ```
 
-### Example: Run PtychoEP with EM-based probe update
+### Example: Run numerical experiments on ptychographic reconstruction with sparse prior
 ```bash
-python profiling/profile_ep.py --backend cupy --niter 50 --n_probe_update 1
+python experiments/script/run_blind_reconstruction.py --object lily --step 16.93 --noise 3.4 --trials 10 --prior sparse
 ```
 
-## Benchmarking & Profiling
-Profiling results (CPU/GPU) for all algorithms are documented in [profiling/README.md], including:
-- PIE
-- ePIE
-- rPIE
-- Difference Map
-- PtychoEP (with/without EM probe update)
 
-All results include runtime breakdown, bottleneck analysis, and hardware info.
+## Contact
+For questions, please open an issue or contact:
+- Hajime Ueda (ueda@mns.k.u-tokyo.ac.jp)

@@ -18,3 +18,5 @@ results/
 # OS依存
 .DS_Store
 Thumbs.db
+
+ptychoep.egg-info/

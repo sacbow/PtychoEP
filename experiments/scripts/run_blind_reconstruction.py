@@ -62,9 +62,9 @@ def run_all_algorithms(ptycho, probe_init, seed):
     results = {}
 
     for EngineClass, name, kwargs in [
-        (PtychoEP, "EP", dict(damping=0.5, n_probe_update=2)),
+        (PtychoEP, "Ptycho-EP(proposed)", dict(damping=0.5, n_probe_update=2)),
         (ePIE, "ePIE", dict(alpha=1.0, beta=1.0)),
-        (rPIE, "rPIE", dict(alpha=0.1, beta=1.0)),
+        (rPIE, "rPIE", dict(alpha=1.0, beta=1.0)),
         (DifferenceMap, "DM", dict())
     ]:
         errors = []
@@ -92,7 +92,7 @@ def plot_convergence(all_errors_dict, ptycho, outpath):
     color_map = {
         "ePIE": ("blue", "+", "navy"),
         "DM": ("orange", "o", "red"),
-        "EP": ("purple", "s", "magenta"),
+        "Ptycho-EP(proposed)": ("purple", "s", "magenta"),
         "rPIE": ("green", "^", "darkgreen")
     }
 
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     out_dir = os.path.join(os.path.dirname(script_dir), "result")
     os.makedirs(out_dir, exist_ok=True)
 
-    all_errors = {"EP": [], "ePIE": [], "rPIE": [], "DM": []}
+    all_errors = {"Ptycho-EP(proposed)": [], "ePIE": [], "rPIE": [], "DM": []}
 
     for i in range(args.n_repeats):
         print(f"Running seed {i}...")
@@ -147,14 +147,14 @@ if __name__ == '__main__':
             jitter=2,
             noise_type=args.noise_type,
             noise_param=args.noise_param,
-            seed=42 + i
+            seed=9 + i
         )
         results = run_all_algorithms(ptycho, probe_init, seed=i)
 
         for name, (errors, obj) in results.items():
             all_errors[name].append(errors)
             if i == 0:
-                cropped = crop_center(np().abs(obj), 180)
+                cropped = crop_center(np().abs(obj), 256)
                 plt.imsave(
                     os.path.join(out_dir, f"recon_{name}_seed_{i}_step{args.step}.png"),
                     cropped, cmap="gray"

@@ -33,22 +33,19 @@ class ePIE(BasePIE):
         self.prb = prb_init if prb_init is not None else ptycho.prb
         self.beta = beta
     
-    # The update_object step tends to be more time-consuming than update_probe.
-    # This is likely due to the fact that it performs an in-place write to self.obj[yy, xx], which is more expensive than read-only access.
 
-    def _update_object(self, proj_wave, exit_wave, indices):
+    def _update_object(self, old_probe, proj_wave, exit_wave, indices):
         yy, xx = indices
-        prb_abs = self.xp.abs(self.prb)
-        prb_conj = self.prb.conj()
-        prb_max = self.xp.max(prb_abs)
+        prb_abs = self.xp.abs(old_probe)
+        prb_conj = old_probe.conj()
+        prb_max = self.xp.max(old_probe)
         delta = self.alpha * prb_conj * (proj_wave - exit_wave) / prb_max**2
         self.obj[yy, xx] += delta
 
-    def _update_probe(self, proj_wave, exit_wave, indices):
+    def _update_probe(self, old_object_patch, proj_wave, exit_wave, indices):
         yy, xx = indices
-        obj_patch = self.obj[yy, xx]
-        obj_abs = self.xp.abs(obj_patch)
-        obj_conj = obj_patch.conj()
+        obj_abs = self.xp.abs(old_object_patch)
+        obj_conj = old_object_patch.conj()
         obj_max = self.xp.max(obj_abs)
         delta_prb = self.beta * obj_conj *  (proj_wave - exit_wave) / obj_max**2
         self.prb += delta_prb
@@ -63,8 +60,10 @@ class ePIE(BasePIE):
                 proj_wave, err_val = Fourier_projector(exit_wave, d.diffraction)
                 err += err_val
 
-                self._update_object(proj_wave, exit_wave, (yy, xx))
-                self._update_probe(proj_wave, exit_wave, (yy, xx))
+                old_object_patch, old_probe = self.obj[yy, xx].copy(), self.prb.copy()
+
+                self._update_object(old_probe, proj_wave, exit_wave, (yy, xx))
+                self._update_probe(old_object_patch, proj_wave, exit_wave, (yy, xx))
 
             if self.callback:
                 self.callback(it, err / len(self.ptycho._diff_data), self.obj)

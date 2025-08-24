@@ -21,7 +21,7 @@ This experiment assumes a round aperture probe function.
 
 * **Example Command**
 ```bash
-  python experiments/script/run_reconstruction_vs_scan_density.py  --n_repeats 10 --noise_type poisson --noise_param 3000  --step 12  --num_scans 16
+  python script/run_reconstruction_vs_scan_density.py  --n_repeats 10 --noise_type poisson --noise_param 3000  --step 12  --num_scans 16
 ```
 
 * **Output**:
@@ -52,7 +52,7 @@ Performs blind reconstruction using four algorithms (Ptycho-EP, PIE, ePIE, rPIE,
 * **Example Command**:
 
 ```bash
-  python experiments/script/run_blind_reconstruction.py --object lily --step 16.93 --noise 3.4 --trials 10 --prior sparse
+  python script/run_blind_reconstruction.py --n_repeats 10 --noise_type poisson --noise_param 3000 --step 18 --num_scans 11
 ```
 
 * **Output**:
@@ -79,5 +79,29 @@ Performs blind reconstruction using four algorithms (Ptycho-EP, PIE, ePIE, rPIE,
 * For Poisson noise, photon count is computed.
 * Median convergence curves are plotted on a log scale.
 
-
 ---
+### 3. `run_uncertainty_validation.py`
+Evaluates the pixel-wise uncertainty estimates produced by Ptycho-EP.
+This script performs a reconstruction on synthetic Gaussian-noise data, computes the normalized reconstruction error with respect to the posterior standard deviation, and visualizes the error distribution.
+
+## Description
+This script runs a single reconstruction using PtychoEP and evaluates the uncertainty map (i.e., the posterior precision Γ_{O,int}) by checking how the reconstruction error aligns with the estimated standard deviation.
+
+## Output
+All output files are saved to the experiment/result/ directory
+```
+  experiment/result/reconstruction_amplitude.png
+  experiment/result/estimated_stddev_with_colorbar_log_fixed.png
+  experiment/result/uncertainty_histogram.png
+```
+
+- reconstruction_amplitude.png: Aligned amplitude of the reconstructed object.
+- estimated_stddev_with_colorbar_log_fixed.png: Estimated standard deviation map with logarithmic color scale (1e0–1e-2), and colorbar.
+- uncertainty_histogram.png: Histogram of the normalized error |x̂ − x| / σ, showing the distribution across the central 256×256 region.
+
+The script also prints the percentage of pixels within the range [0.5σ, 2.0σ], providing empirical validation of the uncertainty estimates.
+
+* **Example Command**
+```bash
+  python script/run_uncertainty_validation.py
+```

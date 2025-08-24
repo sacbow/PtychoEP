@@ -1,9 +1,10 @@
 # utils/engines/pie.py
 from .base_pie import BasePIE
+from ptychoep.backend.backend import np
 
 class PIE(BasePIE):
-    def __init__(self, ptycho, alpha=0.1, obj_init=None, callback=None):
-        super().__init__(ptycho, alpha, obj_init, callback)
+    def __init__(self, ptycho, alpha=0.1, obj_init=None, callback=None, dtype = np().complex64):
+        super().__init__(ptycho, alpha, obj_init, dtype, callback)
         # PIEはプローブ固定なのでキャッシュ可能
         self.prb_conj = self.prb.conj()
         self.prb_abs = self.xp.abs(self.prb)

@@ -1,11 +1,11 @@
 from .uncertain_array import UncertainArray as UA, fft_ua, ifft_ua
-from PtychoEP.backend.backend import np
+from ptychoep.backend.backend import np
 from typing import Optional
-from PtychoEP.ptycho.data import DiffractionData
+from ptychoep.ptycho.data import DiffractionData
 
 from .uncertain_array import UncertainArray as UA
-from PtychoEP.backend.backend import np
-from PtychoEP.ptycho.data import DiffractionData
+from ptychoep.backend.backend import np
+from ptychoep.ptycho.data import DiffractionData
 from typing import Optional
 from .likelihood import Likelihood
 

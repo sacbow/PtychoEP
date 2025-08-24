@@ -1,9 +1,11 @@
-from PtychoEP.ptycho.projector import Fourier_projector
+from ptychoep.ptycho.projector import Fourier_projector
+from ptychoep.backend.backend import np
 from .base_pie import BasePIE
 
 class ePIE(BasePIE):
-    def __init__(self, ptycho, alpha=0.1, beta=0.1, obj_init=None, callback=None):
-        super().__init__(ptycho, alpha, obj_init, callback)
+    def __init__(self, ptycho, alpha=0.1, beta=0.1, obj_init=None, prb_init = None, callback=None, dtype = np().complex64, seed : int = None):
+        super().__init__(ptycho, alpha, obj_init, dtype, callback, seed)
+        self.prb = prb_init if prb_init is not None else ptycho.prb
         self.beta = beta
 
     def _update_object(self, proj_wave, exit_wave, indices):

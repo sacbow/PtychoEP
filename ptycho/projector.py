@@ -1,4 +1,4 @@
-from PtychoEP.backend.backend import np
+from ptychoep.backend.backend import np
 
 def Fourier_projector(exit_wave, target_amp, eps: float = 1e-7, return_per_scan: bool = False):
     """

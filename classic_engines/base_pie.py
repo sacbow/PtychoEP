@@ -1,19 +1,20 @@
-from PtychoEP.backend.backend import np
-from PtychoEP.rng.rng_utils import get_rng, normal
-from PtychoEP.ptycho.core import Ptycho
-from PtychoEP.ptycho.projector import Fourier_projector
+from ptychoep.backend.backend import np
+from ptychoep.rng.rng_utils import get_rng, normal
+from ptychoep.ptycho.core import Ptycho
+from ptychoep.ptycho.projector import Fourier_projector
 
 class BasePIE:
-    def __init__(self, ptycho: Ptycho, alpha: float = 0.1, obj_init=None, callback=None):
+    def __init__(self, ptycho: Ptycho, alpha: float = 0.1, obj_init=None, dtype = np().complex64, callback=None, seed : int = None):
         self.xp = np()  # backend抽象化
         self.ptycho = ptycho
         self.alpha = self.xp.asarray(alpha)
         self.callback = callback
+        self.dtype = dtype
 
         # オブジェクト初期化: ランダム複素分布
         if obj_init is None:
-            rng = get_rng()
-            self.obj = normal(rng, mean=0.0, var=1.0, size=(ptycho.obj_len, ptycho.obj_len), dtype=self.xp.complex64)
+            rng = get_rng(seed)
+            self.obj = normal(rng, mean=0.0, var=1.0, size=(ptycho.obj_len, ptycho.obj_len), dtype=self.dtype)
         else:
             self.obj = self.xp.array(obj_init)
 

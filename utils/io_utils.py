@@ -1,7 +1,7 @@
 import os
 from skimage.io import imread
 from skimage.color import rgb2gray
-from PtychoEP.backend.backend import np
+from ptychoep.backend.backend import np
 
 def load_image_as_array(filename: str, normalize: bool = True) -> np().ndarray:
     img = imread(filename)

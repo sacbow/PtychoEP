@@ -1,8 +1,8 @@
 import pytest
-from PtychoEP.ptycho.core import Ptycho
-from PtychoEP.ptycho.forward import generate_diffraction
-from PtychoEP.ptycho.visualize import compute_illumination
-from PtychoEP.backend.backend import set_backend, np as backend_np
+from ptychoep.ptycho.core import Ptycho
+from ptychoep.ptycho.forward import generate_diffraction
+from ptychoep.ptycho.visualize import compute_illumination
+from ptychoep.backend.backend import set_backend, np as backend_np
 
 @pytest.fixture(autouse=True)
 def setup_backend():

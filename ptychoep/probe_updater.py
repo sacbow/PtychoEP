@@ -1,6 +1,7 @@
 from __future__ import annotations
 from .object import Object
-from PtychoEP.backend.backend import np
+from ptychoep.backend.backend import np
+from .accumulative_uncertain_array import AccumulativeUncertainArray as AUA
 
 class ProbeUpdater:
     """
@@ -64,18 +65,38 @@ class ProbeUpdater:
             P1 = xp.sum(gamma_all * numerator_terms, axis=0)
             P2 = xp.sum(gamma_all * denominator_terms, axis=0)
             P_est = P1 / P2
+            P_est_abs2 = xp.abs(P_est)**2
 
             # --- Adaptive EM: update precision ---
-            gamma_all = 1 / xp.mean(xp.abs(Phi_all - O_mu_all * P_est)**2, axis = (1,2))
+            #debug
+            O_var_all = xp.minimum(O_var_all, 1e8)
+            gamma_all = 1 / xp.mean(
+                xp.abs(Phi_all - O_mu_all * P_est)**2 + (O_var_all * P_est_abs2),
+                axis=(1, 2)
+            ).reshape(-1, 1, 1)
+            gamma_all = xp.maximum(gamma_all, 1e-8)
 
-        # Assigns all probes
+        # --- Assigns all probes ---
         P_abs2 = xp.maximum(xp.abs(P_est) ** 2, 1e-8)
-        P_inv = xp.conj(P_est) / P_abs2
+        P_conj =  xp.conj(P_est)
+        P_inv = P_conj / P_abs2
         for probe in self.obj_node.probe_registry.values():
             probe.set_data(P_est, data_abs=P_abs2, data_inv=P_inv)
 
-        #Assign to all precisions
+        # --- Assign to all precisions ---
         for i, probe in enumerate(self.obj_node.probe_registry.values()):
             probe.child.msg_from_likelihood.precision = gamma_all[i].item()
-
-
+            probe.child.msg_to_probe.precision = gamma_all[i].item()
+        """
+        # --- Recalculate object belief ---
+        new_belief = AUA(shape=self.obj_node.shape, dtype=self.obj_node.dtype)
+        self.obj_node.belief = new_belief
+        #1.add msg from prior
+        if self.obj_node.prior is not None:
+             self.obj_node.belief.add(self.obj_node.msg_from_prior)
+        #2. add msg from likelihood (use new probe!)
+        for diff, probe in self.obj_node.probe_registry.items():
+            indices = self.obj_node.data_registry[diff]
+            self.obj_node.belief._numerator[indices] += probe.child.msg_to_probe.precision * probe.child.msg_to_probe.mean * P_conj
+            self.obj_node.belief._precision[indices] += probe.child.msg_to_probe.precision * P_abs2
+        """

@@ -1,4 +1,4 @@
-from PtychoEP.backend.backend import np, is_cupy
+from ptychoep.backend.backend import np, is_cupy
 
 def get_rng(seed=None):
     """Backendに応じて乱数生成器 (numpy.Generator or cupy.RandomState) を返す"""

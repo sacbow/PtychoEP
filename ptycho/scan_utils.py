@@ -1,7 +1,7 @@
 import math
 from typing import List, Tuple
-from PtychoEP.backend.backend import np
-from PtychoEP.rng.rng_utils import get_rng, randint
+from ptychoep.backend.backend import np
+from ptychoep.rng.rng_utils import get_rng, randint
 
 def generate_spiral_scan_positions(
     image_size: int,
@@ -43,24 +43,15 @@ def generate_grid_scan_positions(
     image_size: int,
     probe_size: int,
     step: int = 16,
-    jitter: int = 0,  # ずらしの範囲（例: jitter=3なら±3の範囲でランダム移動）
-    bounds_check: bool = True
+    jitter: int = 0,  
+    bounds_check: bool = True,
+    seed: int = None
 ) -> List[Tuple[int, int]]:
     """
-    格子状スキャン座標を生成する（オプションでランダムジッターを追加）。
-
-    Args:
-        image_size: 画像サイズ（正方形を前提）
-        probe_size: プローブサイズ（正方形を前提）
-        step: 格子間隔（ピクセル単位）
-        jitter: 格子位置を±jitter範囲でランダムにずらす（0ならオフ）
-        bounds_check: プローブが画像からはみ出さないよう制限するか
-
-    Returns:
-        スキャン位置のリスト [(y, x), ...]
+    to be deplicated.
     """
     positions: List[Tuple[int, int]] = []
-    rng = get_rng()  # backend対応の乱数生成器
+    rng = get_rng(seed)  # backend対応の乱数生成器
 
     for y in range(0, image_size, step):
         for x in range(0, image_size, step):
@@ -74,6 +65,57 @@ def generate_grid_scan_positions(
                 if (x_pos - probe_size // 2 < 0 or x_pos + probe_size // 2 > image_size or
                     y_pos - probe_size // 2 < 0 or y_pos + probe_size // 2 > image_size):
                     continue
+            positions.append((y_pos, x_pos))
+
+    return positions
+
+def generate_centered_grid_positions(
+    image_size: int,
+    probe_size: int,
+    step: int,
+    num_points_y: int,
+    num_points_x: int,
+    jitter: int = 0,
+    seed: int = None,
+    bounds_check: bool = True
+) -> List[Tuple[int, int]]:
+    """
+    画像中心付近にスキャン位置を並べる格子状スキャンパターンを生成。
+
+    Args:
+        image_size: 画像サイズ（正方形）
+        probe_size: プローブサイズ（正方形）
+        step: スキャン間隔（ピクセル）
+        num_points_y: Y方向のスキャン数
+        num_points_x: X方向のスキャン数
+        jitter: ジッターの最大幅（±jitter範囲でずらす）
+        seed: 乱数シード
+        bounds_check: プローブが画像からはみ出さないよう制限するか
+
+    Returns:
+        スキャン位置のリスト [(y, x), ...]
+    """
+    positions: List[Tuple[int, int]] = []
+    rng = get_rng(seed)
+
+    # スキャン領域の中心を画像中心に合わせる
+    start_y = image_size // 2 - (num_points_y - 1) * step // 2
+    start_x = image_size // 2 - (num_points_x - 1) * step // 2
+
+    for i in range(num_points_y):
+        for j in range(num_points_x):
+            y_pos = start_y + i * step
+            x_pos = start_x + j * step
+
+            if jitter > 0:
+                y_pos += randint(rng, -jitter, jitter + 1)
+                x_pos += randint(rng, -jitter, jitter + 1)
+
+            if bounds_check:
+                if (x_pos - probe_size // 2 < 0 or x_pos + probe_size // 2 > image_size or
+                    y_pos - probe_size // 2 < 0 or y_pos + probe_size // 2 > image_size):
+                    continue
+
             positions.append((y_pos, x_pos))
 
     return positions

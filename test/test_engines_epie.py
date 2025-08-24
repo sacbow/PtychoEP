@@ -1,9 +1,9 @@
 import pytest
-from PtychoEP.backend.backend import set_backend, np
-from PtychoEP.ptycho.core import Ptycho
-from PtychoEP.utils.io_utils import load_data_image
-from PtychoEP.ptycho.scan_utils import generate_spiral_scan_positions
-from PtychoEP.classic_engines.epie import ePIE
+from ptychoep.backend.backend import set_backend, np
+from ptychoep.ptycho.core import Ptycho
+from ptychoep.utils.io_utils import load_data_image
+from ptychoep.ptycho.scan_utils import generate_spiral_scan_positions
+from ptychoep.classic_engines.epie import ePIE
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_epie_runs_and_reduces_error(backend):
@@ -20,7 +20,7 @@ def test_epie_runs_and_reduces_error(backend):
     def callback(iter_idx, err, obj_est):
         errors.append(err)
 
-    epie = ePIE(ptycho, alpha=0.1, beta=0.1, callback=callback)
+    epie = ePIE(ptycho, alpha=0.1, beta=0.1, callback=callback, prb_init = probe.copy())
     epie.run(n_iter=10)
 
     assert len(errors) == 10

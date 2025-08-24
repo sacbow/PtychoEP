@@ -2,8 +2,8 @@ from __future__ import annotations
 from .uncertain_array import UncertainArray as UA
 from .fft_channel import FFTChannel
 from typing import Optional, Any
-from PtychoEP.backend.backend import np
-from PtychoEP.ptycho.data import DiffractionData
+from ptychoep.backend.backend import np
+from ptychoep.ptycho.data import DiffractionData
 
 class Probe:
     def __init__(
@@ -68,7 +68,7 @@ class Probe:
         self.data = arr
 
         if data_abs is None:
-            self.abs2 = xp.maximum(xp.abs(arr) ** 2, 1e-8)
+            self.abs2 = xp.maximum(xp.abs(arr) ** 2, 1e-6)
         else:
             self.abs2 = data_abs
 
@@ -94,9 +94,8 @@ class Probe:
         xp = np()
         if self.input_belief is None:
             raise RuntimeError("Probe.forward : no input belief")
-        #out = self.input_belief.scaled(gain=self.data)
         new_mean =  self.input_belief.mean * self.data
-        new_prec = self.input_belief.precision / self.abs2
+        new_prec = xp.minimum(self.input_belief.precision / self.abs2, 1e8) # acoid too large precision
         self.child.input_belief = UA(mean = new_mean, precision = new_prec, dtype = self.dtype)
 
 
@@ -110,7 +109,6 @@ class Probe:
         """
         xp = np()
         msg_from_fft = self.child.msg_to_probe
-        #self.msg_to_object = msg_from_fft.scaled(self.data_inv)
         new_mean = msg_from_fft.mean * self.data_inv
         new_prec = msg_from_fft.precision * self.abs2
         self.msg_to_object = UA(mean = new_mean, precision = new_prec, dtype = self.dtype)

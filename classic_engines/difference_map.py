@@ -1,7 +1,7 @@
 # utils/engines/difference_map.py
-from PtychoEP.backend.backend import np
-from PtychoEP.rng.rng_utils import get_rng, normal
-from PtychoEP.ptycho.projector import Fourier_projector
+from ptychoep.backend.backend import np
+from ptychoep.rng.rng_utils import get_rng, normal
+from ptychoep.ptycho.projector import Fourier_projector
 
 def _normalize_index_to_arrays(idx, xp):
     """(slice,slice) or (yy,xx ndarray) → (yy_flat, xx_flat) へ正規化"""
@@ -25,7 +25,7 @@ def _gather_patch(obj, idx, xp):
     
 
 class DifferenceMap:
-    def __init__(self, ptycho, beta=1.0, obj_init=None, prb_init=None, callback=None):
+    def __init__(self, ptycho, beta=1.0, obj_init=None, prb_init=None, callback=None, seed : int = None):
         self.xp = np()
         self.ptycho = ptycho
         self.beta = beta
@@ -34,7 +34,7 @@ class DifferenceMap:
         # --- init object/probe ---
         xp = self.xp
         if obj_init is None:
-            rng = get_rng()
+            rng = get_rng(seed)
             self.obj = normal(rng, mean=0.0, var=1.0,
                               size=(ptycho.obj_len, ptycho.obj_len),
                               dtype=xp.complex64)

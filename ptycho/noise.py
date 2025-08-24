@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from PtychoEP.backend.backend import np
-from PtychoEP.rng.rng_utils import get_rng, normal, poisson
+from ptychoep.backend.backend import np
+from ptychoep.rng.rng_utils import get_rng, normal, poisson
 
 class Noise(ABC):
     """ノイズモデル基底クラス（強度ベース dB単位のSN比計算を内蔵）"""
@@ -62,9 +62,9 @@ class PoissonNoise(Noise):
             intensity = np().abs(clean) ** 2
             expected_counts = intensity * self.scale
             sampled_counts = poisson(rng = rng, lam = expected_counts).astype(np().float32)
-            noisy_intensity = sampled_counts / self.scale
-            d.diffraction = np().sqrt(noisy_intensity).astype(clean.dtype)
-            d.gamma_w = 4.0 * self.scale # approx: Var[sqrt(Poisson(λ)/scale)] ≈ 1/(4*scale)
+            noisy_intensity = (sampled_counts + 3.0/8.0) / self.scale      #Anscombe transform with c = 3.0/8.0
+            d.diffraction = np().sqrt(noisy_intensity).astype(clean.dtype) 
+            d.gamma_w = 4.0 * self.scale # approx: Var[sqrt(Poisson(λ) + 3/8)/scale)] ≈ 1/(4*scale)
             snr_values.append(self._compute_snr_db(clean, d.diffraction))
 
         snr_mean = sum(snr_values) / len(snr_values) if snr_values else 0.0

@@ -1,71 +1,83 @@
-# Numerical Experiments
+# README: Numerical Experiments for PtychoEP
 
-This directory contains scripts used to reproduce the quantitative results in the manuscript:
-**"A Message-passing Perspective on Ptychographic Phase Retrieval"**.
-
-Each script corresponds to a specific figure or table in the paper, and runs simulations under controlled settings using synthetic data.
+This directory contains scripts for the demonstration of Ptycho-EP. These experiments compare the reconstruction performance of the proposed method (Ptycho-EP) against conventional algorithms.
 
 ---
 
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Environment](#environment)
-3. [Available Experiments](#available-experiments)
-4. [How to Run](#how-to-run)
-
----
-
-## Overview
-
-The scripts in this directory benchmark the performance of **Ptycho-EP** and conventional ptychographic solvers (PIE, ePIE, etc.) across various conditions.
-
----
-
-## Environment
-
-All experiments assume the following baseline setup unless otherwise specified:
-
-- **Object size**: 512 × 512 pixels
-- **Probe size**: 64 × 64 or 128 × 128 pixels
-- **Noise**: Gaussian or Poisson noise (SNR = 30 dB)
-
-Please install the required packages from the root `requirements.txt`.
-
----
-
-## Available Experiments
+## Contents
 
 ### 1. `run_reconstruction_vs_scan_density.py`
-- **Purpose**: Reproduces *Table I* in the manuscript.
-- **What it tests**: Object reconstruction performance (PMSE in dB) as a function of the sampling ratio.
-- **Methods compared**: PIE vs Ptycho-EP (gaussian or sparse prior)
-- **Outputs**:
-  - Median PMSE per method
-  - Convergence curves (saved as `results/compare_pie_ep/convergence_curve.png`)
 
-### 2. (planned) `run_blind_reconstruction_vs_overlap.py`
-- **Purpose**: Will reproduce *Figure 11* (overlap vs fitness convergence).
-- **What it will test**: Performance under limited overlap in blind ptychography.
+Performs reconstruction using PIE and Ptycho-EP on synthetic diffraction data with different noise levels and scan step sizes.
+This experiment assumes a round aperture probe function.
+
+* **Arguments**:
+
+  * `--n_repeats`: number of repeated trials (default: 10)
+  * `--noise_type`: `gaussian` or `poisson`
+  * `--noise_param`: variance (for Gaussian) or scale (for Poisson)
+  * `--step`: scan step size (in pixels)
+  * `--num_scans`: number of scans along each axis (default: 11)
+
+* **Example Command**
+```bash
+  python experiments/script/run_reconstruction_vs_scan_density.py  --n_repeats 10 --noise_type poisson --noise_param 3000  --step 12  --num_scans 16
+```
+
+* **Output**:
+
+* Reconstruction image (only for the first trial) per method:
+
+```
+    result/recon\_EP\_seed\_0.png
+    result/recon\_ePIE\_seed\_0.png
+```
+*  Median convergence curve across trials:
+```
+    result/convergence_median.png
+```
+
+### 2. `run_blind_reconstruction.py`
+
+Performs blind reconstruction using four algorithms (Ptycho-EP, PIE, ePIE, rPIE, DM) from random object initializations. Used to evaluate PMSE and convergence on different object datasets.
+
+* **Arguments**:
+
+  * `--step`: scan step size (default: 16.93)
+  * `--noise`: Gaussian noise variance in units of 1e-5 (default: 3.4)
+  * `--trials`: number of repeated trials (default: 10)
+  * `--object`: `lily` or `cameraman`
+  * `--prior`: `gaussian` or `sparse`
+
+* **Example Command**:
+
+```bash
+  python experiments/script/run_blind_reconstruction.py --object lily --step 16.93 --noise 3.4 --trials 10 --prior sparse
+```
+
+* **Output**:
+
+* Cropped reconstruction images (only for the first trial):
+
+```
+    result/recon\_pie\_object\_{name}*step*{step}.png
+    result/recon\_ep\_object\_{name}*step*{step}.png
+```
+
+* PMSE convergence curve:
+```
+    result/convergence_object_{name}_step_{step}.png
+```
 
 ---
 
-## How to Run
+## Notes
 
-Each script supports command-line arguments. Below are typical usage examples:
+* All experiments are run with `backend = numpy`.
+* The `result/` directory will be created automatically if not present.
+* File names include key parameters (`step`, `object`) to avoid overwriting.
+* For Poisson noise, photon count is computed.
+* Median convergence curves are plotted on a log scale.
 
-### PIE vs Ptycho-EP (Table I benchmark)
 
-```bash
-python run_reconstruction_vs_scan_density.py \
-    --step 17.0 \
-    --noise 3.4 \
-    --trials 10 \
-    --object lily \
-    --prior gaussian
-```
-
-## Reproducing Table I (Sampling Ratio vs PMSE)
-
-To reproduce Table I, use the script `run_reconstruction_vs_scan_density.py` with various scan step sizes (which control sampling ratio α). See [`table1_results.md`](table1_results.md) for full command-line usage and PMSE values.
-
+---

@@ -1,6 +1,6 @@
-from PtychoEP.backend.backend import np
-from PtychoEP.rng.rng_utils import get_rng
-from PtychoEP.ptycho.data import DiffractionData
+from ptychoep.backend.backend import np
+from ptychoep.rng.rng_utils import get_rng
+from ptychoep.ptycho.data import DiffractionData
 from .object import Object
 from .uncertain_array import UncertainArray as UA
 
@@ -39,8 +39,8 @@ class PtychoEP:
         self.obj_node = Object(
             shape=(ptycho.obj_len, ptycho.obj_len),
             rng=rng,
-            initial_probe=prb_init if prb_init is not None else ptycho.prb,
-            initial_object=obj_init
+            initial_probe = prb_init if prb_init is not None else ptycho.prb,
+            initial_object = obj_init
         )
         self.obj_node.set_prior(prior_name, **prior_kwargs)
 
@@ -100,5 +100,10 @@ class PtychoEP:
                     p.child.likelihood.error for p in self.obj_node.probe_registry.values()
                 ]))
                 self.callback(it, float(mean_err), self.obj_node.get_belief().mean)
-
-        return self.obj_node.get_belief().mean, self.obj_node.get_belief().precision
+        # output results
+        obj_estimate = self.obj_node.get_belief() # Uncertain Array
+        if self.n_probe_update == 0:
+            return obj_estimate.mean, obj_estimate.precision
+        else:
+            probe_estimate = self.obj_node.probe_registry[self.ptycho._diff_data[0]].data
+            return obj_estimate.mean, obj_estimate.precision, probe_estimate

@@ -1,11 +1,11 @@
 import pytest
-from PtychoEP.ptycho.core import Ptycho
-from PtychoEP.ptycho.scan_utils import generate_grid_scan_positions
-from PtychoEP.ptycho.aperture_utils import circular_aperture
-from PtychoEP.utils.io_utils import load_data_image
-from PtychoEP.ptychoep.core import PtychoEP
-from PtychoEP.ptychoep.prior import SparsePrior
-from PtychoEP.backend.backend import np
+from ptychoep.ptycho.core import Ptycho
+from ptychoep.ptycho.scan_utils import generate_grid_scan_positions
+from ptychoep.ptycho.aperture_utils import circular_aperture
+from ptychoep.utils.io_utils import load_data_image
+from ptychoep.ptychoep.core import PtychoEP
+from ptychoep.ptychoep.prior import SparsePrior
+from ptychoep.backend.backend import np
 
 
 def make_dummy_ptycho(image_size=128, probe_size=64, step=32, sparsity=0.2):

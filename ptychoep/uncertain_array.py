@@ -1,6 +1,6 @@
 from __future__ import annotations
-from PtychoEP.backend.backend import np
-from PtychoEP.rng.rng_utils import normal
+from ptychoep.backend.backend import np
+from ptychoep.rng.rng_utils import normal
 
 class UncertainArray:
     """

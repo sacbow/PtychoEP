@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from PtychoEP.backend.backend import set_backend, np as backend_np, is_cupy
-from PtychoEP.rng.rng_utils import get_rng, normal
+from ptychoep.backend.backend import set_backend, np as backend_np, is_cupy
+from ptychoep.rng.rng_utils import get_rng, normal
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_normal_real_and_complex(backend):

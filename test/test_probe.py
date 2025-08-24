@@ -1,8 +1,8 @@
-from PtychoEP.backend.backend import set_backend, np as backend_np
-from PtychoEP.ptychoep.uncertain_array import UncertainArray
-from PtychoEP.ptychoep.object import Object
-from PtychoEP.ptychoep.probe import Probe
-from PtychoEP.ptycho.data import DiffractionData
+from ptychoep.backend.backend import set_backend, np as backend_np
+from ptychoep.ptychoep.uncertain_array import UncertainArray
+from ptychoep.ptychoep.object import Object
+from ptychoep.ptychoep.probe import Probe
+from ptychoep.ptycho.data import DiffractionData
 import pytest
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])

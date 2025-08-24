@@ -1,4 +1,4 @@
-from PtychoEP.backend.backend import np
+from ptychoep.backend.backend import np
 
 def circular_aperture(size: int, r: float, dtype=None):
     """

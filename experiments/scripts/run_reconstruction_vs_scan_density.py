@@ -1,23 +1,25 @@
+import sys 
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 import argparse
 import matplotlib.pyplot as plt
 
-from PtychoEP.backend.backend import set_backend, np
+from ptychoep.backend.backend import set_backend, np
 set_backend("numpy")
 
-from PtychoEP.ptycho.core import Ptycho
-from PtychoEP.utils.io_utils import load_data_image
-from PtychoEP.ptycho.aperture_utils import circular_aperture
-from PtychoEP.ptycho.scan_utils import generate_spiral_scan_positions
-from PtychoEP.ptycho.noise import GaussianNoise
-from PtychoEP.ptycho.visualize import compute_illumination
-from PtychoEP.rng.rng_utils import get_rng
-from PtychoEP.classic_engines.pie import PIE
-from PtychoEP.ptychoep.core import PtychoEP
+from ptychoep.ptycho.core import Ptycho
+from ptychoep.utils.io_utils import load_data_image
+from ptychoep.ptycho.aperture_utils import circular_aperture
+from ptychoep.ptycho.scan_utils import generate_spiral_scan_positions
+from ptychoep.ptycho.noise import GaussianNoise
+from ptychoep.ptycho.visualize import compute_illumination
+from ptychoep.rng.rng_utils import get_rng
+from ptychoep.classic_engines.pie import PIE
+from ptychoep.ptychoep.core import PtychoEP
 
 # directory to save results
-import os
-
-output_dir = "results/compare_pie_ep"
+output_dir = os.path.join(os.path.dirname(__file__), '../result')
 os.makedirs(output_dir, exist_ok=True)
 
 def phase_align(x_est, x_true):
@@ -25,10 +27,8 @@ def phase_align(x_est, x_true):
     phase = np().angle(inner_product)
     return x_est * np().exp(-1j * phase)
 
-
 def error(x_est, x_true):
     return np().sum(np().abs(x_est - x_true) ** 2)
-
 
 def pmse(x_est, x_true, crop=None):
     if crop is not None:
@@ -39,6 +39,11 @@ def pmse(x_est, x_true, crop=None):
     signal_power = np().sum(np().abs(x_true)**2)
     return 10 * np().log10(signal_power / error_power)
 
+def crop_center(img, crop_size):
+    H, W = img.shape
+    ch = crop_size // 2
+    center_y, center_x = H // 2, W // 2
+    return img[center_y - ch:center_y + ch, center_x - ch:center_x + ch]
 
 def main():
     parser = argparse.ArgumentParser()
@@ -137,6 +142,13 @@ def main():
         print(f"[RESULT] PIE       PMSE: {pmse_pie:.4f} dB")
         print(f"[RESULT] Ptycho-EP PMSE: {pmse_ep:.4f} dB")
 
+        # 画像保存（初回だけ）
+        if trial == 0:
+            out_img_pie = crop_center(np().abs(obj_est_pie), 128)
+            out_img_ep  = crop_center(np().abs(obj_est_ep), 128)
+            plt.imsave(os.path.join(output_dir, f"recon_pie_object_{args.object}_step_{args.step}.png"), out_img_pie, cmap="gray")
+            plt.imsave(os.path.join(output_dir, f"recon_ep_object_{args.object}_step_{args.step}.png"), out_img_ep, cmap="gray")
+
     # メディアン出力
     median_pie = np().median(pmse_list_pie)
     median_ep = np().median(pmse_list_ep)
@@ -158,7 +170,8 @@ def main():
     plt.grid(True, ls="--", alpha=0.5)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, "convergence_curve.png"))
+    plotname = f"convergence_object_{args.object}_step_{args.step}.png"
+    plt.savefig(os.path.join(output_dir, plotname))
     plt.show()
 
 

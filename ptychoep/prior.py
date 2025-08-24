@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .uncertain_array import UncertainArray as UA
-from PtychoEP.backend.backend import np
+from ptychoep.backend.backend import np
 
 
 class BasePrior:

@@ -1,9 +1,9 @@
 from __future__ import annotations
 from .accumulative_uncertain_array import AccumulativeUncertainArray as AUA
 from .uncertain_array import UncertainArray as UA
-from PtychoEP.backend.backend import np
-from PtychoEP.rng.rng_utils import get_rng, normal
-from PtychoEP.ptycho.data import DiffractionData
+from ptychoep.backend.backend import np
+from ptychoep.rng.rng_utils import get_rng, normal
+from ptychoep.ptycho.data import DiffractionData
 from .probe import Probe
 from .prior import BasePrior, SparsePrior
 
@@ -169,8 +169,8 @@ class Object:
 
         # update belief and msg_from_data
         indices = self.data_registry[data]
-        self.belief.subtract(old_msg, indices)
         self.belief.add(new_msg, indices)
+        self.belief.subtract(old_msg, indices)
         self.msg_from_data[data] = new_msg
 
     def get_belief(self) -> UA:

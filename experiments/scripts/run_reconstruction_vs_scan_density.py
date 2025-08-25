@@ -149,12 +149,19 @@ def main():
             plt.imsave(os.path.join(output_dir, f"recon_pie_object_{args.object}_step_{args.step}.png"), out_img_pie, cmap="gray")
             plt.imsave(os.path.join(output_dir, f"recon_ep_object_{args.object}_step_{args.step}.png"), out_img_ep, cmap="gray")
 
-    # メディアン出力
+    # メディアンと四分位数を出力
     median_pie = np().median(pmse_list_pie)
+    q1_pie = np().percentile(pmse_list_pie, 25)
+    q3_pie = np().percentile(pmse_list_pie, 75)
+
     median_ep = np().median(pmse_list_ep)
+    q1_ep = np().percentile(pmse_list_ep, 25)
+    q3_ep = np().percentile(pmse_list_ep, 75)
+
     print("\n========== Summary ==========")
-    print(f"[PIE]       PMSE Median: {median_pie:.4f} dB")
-    print(f"[Ptycho-EP] PMSE Median: {median_ep:.4f} dB")
+    print(f"[PIE]       PMSE Median: {median_pie:.4f} dB  (Q1={q1_pie:.4f}, Q3={q3_pie:.4f})")
+    print(f"[Ptycho-EP] PMSE Median: {median_ep:.4f} dB  (Q1={q1_ep:.4f}, Q3={q3_ep:.4f})")
+
 
     # 収束曲線プロット
     iteration_ticks = np().arange(0, n_iter, 10)

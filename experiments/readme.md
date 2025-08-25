@@ -14,14 +14,14 @@ This experiment assumes a round aperture probe function.
 * **Arguments**:
 
   * `--n_repeats`: number of repeated trials (default: 10)
-  * `--noise_type`: `gaussian` or `poisson`
-  * `--noise_param`: variance (for Gaussian) or scale (for Poisson)
+  * `--noise`: variance (for Gaussian) (unit: 10^5)
   * `--step`: scan step size (in pixels)
-  * `--num_scans`: number of scans along each axis (default: 11)
+  * `--object`: cameraman or lily
+  * `--prior`: gaussian or sparse (default: gaussian)
 
 * **Example Command**
 ```bash
-  python script/run_reconstruction_vs_scan_density.py  --n_repeats 10 --noise_type poisson --noise_param 3000  --step 12  --num_scans 16
+  python scripts/run_reconstruction_vs_scan_density.py  --trials 10 --noise 3.4  --object lily  --step 22.95 --prior sparse
 ```
 
 * **Output**:

@@ -15,7 +15,6 @@ from ptychoep.ptycho.noise import GaussianNoise
 from ptychoep.ptychoep.core import PtychoEP
 import os
 
-os.makedirs("experiment/results", exist_ok=True)
 
 # === データ生成 ===
 image_size = 512
@@ -23,6 +22,8 @@ probe_size = 128
 step = 12
 num_scans = 16
 jitter = 2
+data_seed = 999
+algorithm_seed = 123
 
 amp = np().asarray(load_data_image("cameraman.png"), dtype=np().complex64)
 phase = np().asarray(load_data_image("eagle.png"), dtype=np().complex64)
@@ -36,7 +37,7 @@ positions = generate_centered_grid_positions(
     num_points_y=num_scans,
     num_points_x=num_scans,
     jitter=jitter,
-    seed=90
+    seed=data_seed
 )
 
 ptycho = Ptycho()
@@ -46,14 +47,14 @@ ptycho.forward_and_set_diffraction(positions)
 ptycho.sort_diffraction_data()
 
 var = 1e-3
-GaussianNoise(var=var, seed=124) @ ptycho
+GaussianNoise(var=var, seed=data_seed) @ ptycho
 
 ep_list = []
 def record_callback(it, err, current_obj):
     ep_list.append(err)
 
-engine = PtychoEP(ptycho=ptycho, damping=0.5, seed=1, callback=record_callback)
-result_ep = engine.run(n_iter=100)
+engine = PtychoEP(ptycho=ptycho, damping=0.5, seed=algorithm_seed, callback=record_callback)
+result_ep = engine.run(n_iter=200)
 reconstruction = result_ep[0]
 precision_map = result_ep[1]
 
@@ -75,17 +76,27 @@ print(f"Ratio of pixels within [0.5σ, 2σ]: {ratio_in_range:.2%}")
 plt.imsave("../result/reconstruction_amplitude.png",
            np().abs(reconstruction_aligned[crop, crop]), cmap="gray")
 # カラーバー付きで標準偏差マップを保存
-fig, ax = plt.subplots(figsize=(6, 5))
-im = ax.imshow(standard_deviation[crop, crop], cmap="magma", norm=LogNorm(vmin=1e-2, vmax=1e0))
-ax.set_title("Estimated Standard Deviation")
-
+fig1, ax1 = plt.subplots(figsize=(6, 5))
+im1 = ax1.imshow(standard_deviation[crop, crop], cmap="magma", norm=LogNorm(vmin=2e-2, vmax=1e0))
+ax1.set_title("Estimated Standard Deviation", fontsize = 20)
 # 軸の目盛りを非表示にする
-ax.axis("off")
-
-cbar = fig.colorbar(im, ax=ax)
-cbar.set_label("Std. Dev. (1 / sqrt(Γ_int))")
+ax1.axis("off")
+cbar1 = fig1.colorbar(im1, ax=ax1)
 plt.tight_layout()
 plt.savefig("../result/estimated_stddev_with_colorbar.png")
+
+#-------  追加 ------
+# カラーバー付きで誤差マップを保存
+fig2, ax2 = plt.subplots(figsize=(6, 5))
+im2 = ax2.imshow(amplitude_error[crop, crop], cmap="magma", norm=LogNorm(vmin=2e-2, vmax=1e0))
+ax2.set_title("Absolute Error", fontsize = 20)
+# 軸の目盛りを非表示にする
+ax2.axis("off")
+cbar2 = fig2.colorbar(im2, ax=ax2)
+plt.tight_layout()
+plt.savefig("../result/absolute_error.png")
+
+
 
 
 
@@ -93,8 +104,8 @@ plt.figure(figsize=(6, 4))
 plt.hist(normalized_error, bins=100, range=(0, 3), density=True, alpha=0.7, label='Normalized Error')
 plt.axvline(0.5, color='red', linestyle='--', label='Bounds 0.5 / 2.0')
 plt.axvline(2.0, color='red', linestyle='--')
-plt.title("Distribution of Normalized Reconstruction Error")
-plt.xlabel(r"$|x_{\mathrm{est}} - x_{\mathrm{true}}| / \sigma$")
+plt.title("Distribution of Normalized Reconstruction Error", fontsize = 15)
+plt.xlabel(r"$|O_{\mathrm{est}} - O_{\mathrm{true}}| / \sigma$", fontsize = 15)
 plt.ylabel("Density")
 plt.legend()
 plt.grid(True)

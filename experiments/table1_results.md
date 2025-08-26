@@ -100,5 +100,5 @@ See `experiments/README.md` for usage details.
 
 ## Remarks
 
-- **Ptycho-EP consistently outperforms PIE**, especially at low α (2.1–2.4), where PIE often fails catastrophically (PMSE < 0 dB).
+- **Ptycho-EP consistently outperforms PIE**, especially at low α below 3.0.
 - **Sparse prior** significantly improves reconstruction under limited sampling, confirming the effect described in the manuscript.

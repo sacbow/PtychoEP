@@ -13,7 +13,7 @@ This experiment assumes a round aperture probe function.
 
 * **Arguments**:
 
-  * `--n_repeats`: number of repeated trials (default: 10)
+  * `--trials`: number of repeated trials (default: 10)
   * `--noise`: variance (for Gaussian) (unit: 10^5)
   * `--step`: scan step size (in pixels)
   * `--object`: cameraman or lily
@@ -43,16 +43,17 @@ Performs blind reconstruction using four algorithms (Ptycho-EP, PIE, ePIE, rPIE,
 
 * **Arguments**:
 
-  * `--step`: scan step size (default: 16.93)
-  * `--noise`: Gaussian noise variance in units of 1e-5 (default: 3.4)
   * `--trials`: number of repeated trials (default: 10)
+  * `--noise_type`: Gaussian or Poisson
+  * `--noise_param`: variance of Gaussian noise or scaling factor of Poisson noise
   * `--object`: `lily` or `cameraman`
-  * `--prior`: `gaussian` or `sparse`
+  * `--step`: step size of grid scan
+  *  `--num_scan`: number of scans per each dimension
 
 * **Example Command**:
 
 ```bash
-  python script/run_blind_reconstruction.py --n_repeats 10 --noise_type poisson --noise_param 3000 --step 18 --num_scans 11
+  python scripts/run_blind_reconstruction.py --trials 10 --noise_type poisson --noise_param 3000 --step 18 --num_scans 11
 ```
 
 * **Output**:

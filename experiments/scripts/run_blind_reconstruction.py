@@ -97,14 +97,30 @@ def plot_convergence(all_errors_dict, ptycho, outpath):
     }
 
     for name, errors_list in all_errors_dict.items():
-        errors_array = np().array(errors_list) / diff_power  # shape: (n_repeats, n_iters)
+        # errors_list: List[np.array]  (各試行のエラー系列)
+        # 正規化＆(n_repeats, n_iters) へまとめる
+        errors_array = np().array([e / diff_power for e in errors_list])
+
+        # 中央値と四分位数を計算（軸=0: 試行で統計を取る）
         median_error = np().median(errors_array, axis=0)
+        q1_error = np().percentile(errors_array, 25, axis=0)
+        q3_error = np().percentile(errors_array, 75, axis=0)
+
+        # x軸（各手法で反復回数が異なる可能性があるため都度生成）
+        iters = np().arange(median_error.size)
+
         color, marker, edge = color_map.get(name, ("black", "x", "black"))
-        ax.plot(median_error, label=name, color=color, marker=marker,
+
+        # IQRの帯（薄色）を先に描画
+        ax.fill_between(iters, q1_error, q3_error,
+                        color=color, alpha=0.20, linewidth=0)
+
+        # 中央値の収束曲線（実線＋マーカー）
+        ax.plot(iters, median_error, label=name, color=color, marker=marker,
                 markeredgecolor=edge, markerfacecolor="white", markersize=5)
 
     ax.set_xlabel("Iteration", fontsize=20)
-    ax.set_ylabel("NMSE", fontsize=20)
+    ax.set_ylabel("Fitness", fontsize=20)
     ax.set_ylim(1e-3, 1)
     ax.set_yscale('log')
     ax.legend(fontsize=14)
@@ -124,7 +140,7 @@ def crop_center(img, crop_size):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_repeats', type=int, default=10)
+    parser.add_argument('--trials', type=int, default=10)
     parser.add_argument('--noise_type', type=str, choices=['gaussian', 'poisson'], default='gaussian')
     parser.add_argument('--noise_param', type=float, default=1e-4)  # var or scale
     parser.add_argument('--step', type=int, default=18)
@@ -137,7 +153,7 @@ if __name__ == '__main__':
 
     all_errors = {"Ptycho-EP(proposed)": [], "ePIE": [], "rPIE": [], "DM": []}
 
-    for i in range(args.n_repeats):
+    for i in range(args.trials):
         print(f"Running seed {i}...")
         ptycho, probe_init = generate_data(
             image_size=512,

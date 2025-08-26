@@ -162,25 +162,5 @@ def main():
     print(f"[PIE]       PMSE Median: {median_pie:.4f} dB  (Q1={q1_pie:.4f}, Q3={q3_pie:.4f})")
     print(f"[Ptycho-EP] PMSE Median: {median_ep:.4f} dB  (Q1={q1_ep:.4f}, Q3={q3_ep:.4f})")
 
-
-    # 収束曲線プロット
-    iteration_ticks = np().arange(0, n_iter, 10)
-    pie_curve = np().median(np().array(all_pie_errors), axis=0)
-    ep_curve  = np().median(np().array(all_ep_errors), axis=0)
-
-    plt.figure(figsize=(7,4))
-    plt.plot(iteration_ticks, pie_curve, label="PIE (median)")
-    plt.plot(iteration_ticks, ep_curve, label="Ptycho-EP (median)")
-    plt.yscale("log")
-    plt.xlabel("Iteration (every 10)")
-    plt.ylabel("Amplitude Error")
-    plt.grid(True, ls="--", alpha=0.5)
-    plt.legend()
-    plt.tight_layout()
-    plotname = f"convergence_object_{args.object}_step_{args.step}.png"
-    plt.savefig(os.path.join(output_dir, plotname))
-    plt.show()
-
-
 if __name__ == "__main__":
     main()

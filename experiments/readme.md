@@ -21,7 +21,7 @@ This experiment assumes a round aperture probe function.
 
 * **Example Command**
 ```bash
-  python scripts/run_reconstruction_vs_scan_density.py  --trials 10 --noise 3.4  --object lily  --step 22.95 --prior sparse
+  python experiments/scripts/run_reconstruction_vs_scan_density.py  --trials 10 --noise 3.4  --object lily  --step 22.95 --prior sparse
 ```
 
 * **Output**:
@@ -53,7 +53,7 @@ Performs blind reconstruction using four algorithms (Ptycho-EP, PIE, ePIE, rPIE,
 * **Example Command**:
 
 ```bash
-  python scripts/run_blind_reconstruction.py --trials 10 --noise_type poisson --noise_param 3000 --step 18 --num_scans 11
+  python experiments/scripts/run_blind_reconstruction.py --trials 10 --noise_type poisson --noise_param 3000 --step 18 --num_scans 11
 ```
 
 * **Output**:
@@ -104,5 +104,5 @@ The script also prints the percentage of pixels within the range [0.5σ, 2.0σ],
 
 * **Example Command**
 ```bash
-  python script/run_uncertainty_validation.py
+  python experiments/scripts/run_uncertainty_validation.py
 ```

@@ -29,8 +29,6 @@ ptychoep/
 │   ├── likelihood.py                   # Factor node representing the likelihood
 │   ├── prior.py                        # Factor node representing the prior
 │   ├── uncertain_array.py              # Abstraction of gaussian distribution
-│   ├── uncertain_array.py              # Abstraction of gaussian distribution
-│   ├── uncertain_array.py              # Abstraction of gaussian distribution
 │   ├── accumulative_uncertain_array    # Data structure used in the object node
 |   ├── probe_updater.py                # EM update of probe (used in unknown probe scenario)
 ├── profiling/                          # Profiling and benchmarking scripts
@@ -42,11 +40,35 @@ ptychoep/
 ## Quick start
 ```bash
 # Clone and set up virtual environment
-git clone https://github.com/yourname/PtychoEP.git
+git clone https://github.com/sacbow/PtychoEP.git
 cd ptychoep
 python -m venv .venv
 source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
+```
+
+### Dependencies
+The following packages are required to run PtychoEP:
+
+#### ✅ Core Dependencies
+These packages are necessary for running the core algorithm:
+```
+    numpy>=1.22  
+    matplotlib>=3.5  
+    imageio>=2.30  
+```
+
+#### 🚀 Optional: GPU Acceleration
+To enable GPU backend with CuPy (instead of NumPy), install:
+```
+    cupy-cuda12x  # Choose version matching your CUDA setup (e.g., cupy-cuda120, cupy-cuda121)
+```
+
+#### 🧪 Optional: Testing and Coverage
+To run unit tests and check code coverage:
+```
+    pytest>=8.0  
+    pytest-cov>=6.0  
 ```
 
 ### Example: Profile PtychoEP with EM algorithm
